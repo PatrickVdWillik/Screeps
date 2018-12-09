@@ -7,6 +7,12 @@ interface CreepMemory {
   working: boolean;
 }
 
+declare enum QueuePriority {
+  //Low, Normal,
+  //Important,
+  Critical
+}
+
 interface Memory {
   uuid: number;
   log: any;

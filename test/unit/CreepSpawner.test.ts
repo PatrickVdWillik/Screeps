@@ -1,46 +1,110 @@
-import { CreepSpawner } from "../../src/CreepSpawner";
 import * as TypeMoq from "typemoq";
+import { CreepSpawner } from "../../src/CreepSpawner";
+import { ISpawnQueue, SpawnRequest, QueuePriority } from "../../src/SpawnQueue";
+import { ICreepBuilder } from "../../src/CreepBuilder";
+import { RoomBuilder } from "../builder/RoomBuilder";
+import { SpawnBuilder } from "../builder/SpawnBuilder";
 
 describe("CreepSpawner", () => {
-    let _room: TypeMoq.IMock<Room>;
-    let _spawner: CreepSpawner;
+    let _room: RoomBuilder;
+    let _spawnQueue: TypeMoq.IMock<ISpawnQueue>;
+    let _creepBuilder: TypeMoq.IMock<ICreepBuilder>;
 
-    describe("no available spawns", () => {
+    function getSpawner(): CreepSpawner {
+        return new CreepSpawner(_room.build(), _spawnQueue.object, _creepBuilder.object);
+    }
+
+    beforeEach(() => {
+        _room = RoomBuilder.create();
+        _spawnQueue = TypeMoq.Mock.ofType<ISpawnQueue>();
+        _creepBuilder = TypeMoq.Mock.ofType<ICreepBuilder>();
+    });
+
+    describe("without a spawn request", () => {
         beforeEach(() => {
-            console.log("FIND_MY_SPAWNS = " + FIND_MY_SPAWNS);
-            _room = TypeMoq.Mock.ofType<Room>();
-            _room
-                .setup(r => r.find(TypeMoq.It.isValue(FIND_MY_SPAWNS)))
-                .returns(() => [] as StructureSpawn[]);
+            _spawnQueue.setup(s => s.length).returns(s => 0);
+        });
 
-            _spawner = new CreepSpawner(_room.object);
+        it("won't call completeRequest()", () => {
+            getSpawner().run();
 
-        })
-
-        it("won't do anything", () => {
-            _spawner.run();
+            _spawnQueue.verify(s => s.completeRequest(), TypeMoq.Times.never());
         });
     });
 
-    describe("available spawn", () => {
-        let _spawn: TypeMoq.IMock<StructureSpawn>;
+    describe("with a spawn request", () => {
+        let _spawnBuilder: SpawnBuilder;
+        let _spawnRequest: SpawnRequest = {
+            role: "Worker",
+            priority: QueuePriority.Normal,
+            idealSize: true,
+            body: [WORK, MOVE, CARRY]
+        };
 
         beforeEach(() => {
-            _spawn = TypeMoq.Mock.ofType<StructureSpawn>();
-            _spawn.setup((s) => s.spawnCreep(TypeMoq.It.isAny(), TypeMoq.It.isAny()))
-                .returns(() => OK as ScreepsReturnCode);
-
-            _room = TypeMoq.Mock.ofType<Room>();
-            _room.setup(r => r.find(TypeMoq.It.isValue(FIND_MY_SPAWNS)))
-                .returns(() => [_spawn.object]);
-
-            _spawner = new CreepSpawner(_room.object);
+            _spawnBuilder = SpawnBuilder.create();
+            _spawnQueue.setup(s => s.length).returns(s => 1);
+            _spawnQueue.setup(s => s.peek())
+                .returns(s => _spawnRequest);
         });
 
-        it("calls spawnCreep", () => {
-            _spawner.run();
+        it("will filter away spawns that are spawning", () => {
+            _room.withSpawnBuilder(_spawnBuilder);
+            _spawnBuilder.isSpawning({} as Spawning);
 
-            _spawn.verify(s => s.spawnCreep(TypeMoq.It.isAny(), TypeMoq.It.isAny()), TypeMoq.Times.once());
+            getSpawner().run();
+
+            _spawnBuilder.mock.verify(s => s.spawnCreep(TypeMoq.It.isAny(), TypeMoq.It.isAny(), TypeMoq.It.isAny()), TypeMoq.Times.never());
         });
-    })
+
+        describe("without any available spawns", () => {
+            it("won't call completeRequest", () => {
+                _room.withSpawn(b => b.isSpawning({} as Spawning));
+
+                getSpawner().run();
+
+                _spawnQueue.verify(s => s.completeRequest(), TypeMoq.Times.never());
+            });
+        });
+
+        describe("with available spawn and successful spawnCreep() call", () => {
+            beforeEach(() => {
+                _room.withSpawnBuilder(_spawnBuilder);
+                _spawnBuilder
+                    .isNotSpawning()
+                    .spawnCreep(OK);
+            });
+
+            it("will call spawnCreep once", () => {
+                getSpawner().run();
+
+                _spawnBuilder.mock.verify(s => s.spawnCreep(TypeMoq.It.isValue(_spawnRequest.body!), TypeMoq.It.isAnyString(), TypeMoq.It.isObjectWith({
+                    memory: {
+                        role: _spawnRequest.role
+                    } as CreepMemory
+                })), TypeMoq.Times.once());
+            });
+
+            it("will completeRequest", () => {
+                getSpawner().run();
+
+                _spawnQueue.verify(q => q.completeRequest(), TypeMoq.Times.once());
+            })
+        });
+
+        describe("with available spawn and not enough Energy", () => {
+            beforeEach(() => {
+                _room.withSpawnBuilder(_spawnBuilder);
+                _spawnBuilder
+                    .isNotSpawning()
+                    .spawnCreep(ERR_NOT_ENOUGH_ENERGY);
+            });
+
+            it("won't completeRequest()", () => {
+                getSpawner().run();
+
+                _spawnQueue.verify(q => q.completeRequest(), TypeMoq.Times.never());
+            });
+        });
+    });
 });

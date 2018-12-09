@@ -5,20 +5,23 @@ module.exports = {
         "./jest_setup.js"
     ],
     transform: {
-        "^.+\\.tsx?$": "<rootDir>/node_modules/ts-jest/preprocessor.js"
+        "^.+\\.tsx?$": "ts-jest"
     },
-    testRegex: "(/tests/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
-    moduleFileExtensions: [
-        "ts",
-        "tsx",
-        "js",
-        "jsx",
-        "json"
+    testRegex: "(/test/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
+    testPathIgnorePatterns: [
+        "/node_modules/",
+        "mock.ts",
+        "helper.ts",
+        "integration.test.ts",
+        "setup-node.js",
+        "/builder/"
     ],
     globals: {
         "ts-jest": {
-            "skipBabel": true,
-            "tsConfigFile": "./test/tsconfig.json"
+            //"ignoreBabel": true,
+            "babelConfig": false,
+            "tsConfig": "./test/tsconfig.json"
         },
 
         OK: 0,
