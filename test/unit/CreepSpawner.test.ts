@@ -106,5 +106,23 @@ describe("CreepSpawner", () => {
                 _spawnQueue.verify(q => q.completeRequest(), TypeMoq.Times.never());
             });
         });
+
+        describe("with a spawnRequest without a body", () => {
+            const _creepBody = [WORK, CARRY, MOVE, MOVE];
+            beforeEach(() => {
+                _spawnRequest.body = undefined;
+
+                _creepBuilder.setup(b => b.buildBody(TypeMoq.It.isAny(), TypeMoq.It.isAny()))
+                    .returns(b => _creepBody);
+                _room.withSpawnBuilder(_spawnBuilder);
+                _spawnBuilder.isNotSpawning().spawnCreep(OK);
+            });
+
+            it("will call the creepBuilder", () => {
+                getSpawner().run();
+
+                _spawnBuilder.mock.verify(s => s.spawnCreep(TypeMoq.It.isValue(_creepBody), TypeMoq.It.isAnyString(), TypeMoq.It.isAny()), TypeMoq.Times.once());
+            });
+        })
     });
 });

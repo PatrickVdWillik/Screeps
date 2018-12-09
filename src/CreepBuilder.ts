@@ -1,11 +1,11 @@
 import { SpawnRequest } from "./SpawnQueue";
 
 export interface ICreepBuilder {
-    buildBody(spawnRequest: SpawnRequest): BodyPartConstant[];
+    buildBody(room: Room, spawnRequest: SpawnRequest): BodyPartConstant[];
 }
 
 export class CreepBuilder implements ICreepBuilder {
-    public buildBody(request: SpawnRequest): BodyPartConstant[] {
+    public buildBody(room: Room, request: SpawnRequest): BodyPartConstant[] {
         throw new Error("Not implemented.");
     }
 }

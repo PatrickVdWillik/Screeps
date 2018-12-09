@@ -15,7 +15,13 @@ export class CreepSpawner {
 
         const spawn = _.first(spawns);
         const request = this._queue.peek()!;
-        const result = spawn.spawnCreep(request.body!, "Creep", {
+
+        let body = request.body;
+        if (!body) {
+            body = this._creepBuilder.buildBody(this._room, request);
+        }
+
+        const result = spawn.spawnCreep(body!, "Creep", {
             memory: { role: request.role } as CreepMemory
         });
 
