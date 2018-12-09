@@ -10,7 +10,6 @@ export const Game = {
   objects: <Index>{
   },
   getObjectById(id: string): any {
-    console.log(`Getting ${id}`);
     return this.objects[id];
   }
 };
