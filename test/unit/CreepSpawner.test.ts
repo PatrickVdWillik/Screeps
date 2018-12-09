@@ -1,4 +1,3 @@
-//import { assert } from "chai";
 import { CreepSpawner } from "../../src/CreepSpawner";
 import * as TypeMoq from "typemoq";
 
@@ -8,6 +7,7 @@ describe("CreepSpawner", () => {
 
     describe("no available spawns", () => {
         beforeEach(() => {
+            console.log("FIND_MY_SPAWNS = " + FIND_MY_SPAWNS);
             _room = TypeMoq.Mock.ofType<Room>();
             _room
                 .setup(r => r.find(TypeMoq.It.isValue(FIND_MY_SPAWNS)))
