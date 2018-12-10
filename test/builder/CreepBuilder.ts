@@ -1,13 +1,28 @@
 import { AbstractBuilder } from "./AbstractBuilder";
+import { RoomBuilder } from "./RoomBuilder";
 import { IMock, Mock, It } from "typemoq";
 
 export class CreepBuilder extends AbstractBuilder<Creep> {
+    private _roomBuilder: RoomBuilder;
+    private _room: Room;
+    
     constructor() {
         super();
     }
 
     public static create(): CreepBuilder {
         return new CreepBuilder();
+    }
+    
+    public withRoom(room: Room): CreepBuilder {
+        this._room = room;
+        
+        return this;
+    }
+    
+    public withRoomBuilder(builder: RoomBuilder): CreepBuilder {
+        this._roomBuilder = builder;
+        return this;
     }
 
     public withMemory(memory: any): CreepBuilder {
@@ -43,6 +58,14 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
     }
 
     public build(): Creep {
+        if (this._roomBuilder) {
+            this._room = this._roomBuilder.build();
+        }
+        
+        this.mock
+            .setup(c => c.room)
+            .returns(c => this._room);
+            
         return this.mock.object;
     }
 }

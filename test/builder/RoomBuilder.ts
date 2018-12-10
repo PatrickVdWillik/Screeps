@@ -5,6 +5,11 @@ import { assert } from "chai";
 
 export class RoomBuilder extends AbstractBuilder<Room> {
     private _spawnBuilders: SpawnBuilder[] = [];
+    private _name: string = "";
+    
+    public get name(): string {
+        return this._name;
+    }
 
     private constructor() {
         super();
@@ -46,6 +51,11 @@ export class RoomBuilder extends AbstractBuilder<Room> {
     }
 
     public build(): Room {
+        this._name = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5);
+        this.mock
+            .setup(r => r.name)
+            .returns(r => `Room_${this.name}`);
+        
         if (this._spawnBuilders.length > 0) {
             this.configureFindSpawns();
         }
