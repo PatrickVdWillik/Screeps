@@ -10,54 +10,72 @@ describe("Truck", () => {
     describe("isn't loaded", () => {
         let _creepBuilder: CreepBuilder;
         let _roomBuilder: RoomBuilder;
-        const _memory = {
+        const _memory: any = {
             role: "Truck"
         };
 
         function getRole(): Truck {
             return new Truck(_creepBuilder.build());
         }
-    
+
         beforeEach(() => {
             // @ts-ignore : allow adding Game to global
             global.Game = _.clone(Game);
-    
+
             _roomBuilder = RoomBuilder.create();
-            
+
             _creepBuilder = CreepBuilder.create()
                 .withRoomBuilder(_roomBuilder)
-                .withMemory(_memory);
+                .withMemory(_memory)
+                .withCarryCapacity(200);
         });
-    
-        describe("with a resource in the room", () => {
-            const _resourceId = "123";
-            
-            beforeEach(() => {
-                const r = ResourceBuilder
-                    .create()
-                    .atPos(4, 4)
-                    .ofResourceType(RESOURCE_ENERGY)
-                    .withAmount(100)
-                    .withId(_resourceId)
-                    .build();
-                    
-               _roomBuilder.withResource(r);
-            });
-            
-            describe("and no stored target", () => {
-                it("will store the id in memory", () => {
-                    getRole().run();
-                    
-                    assert.equal(_memory.target, _resourceId);
-                });
-            });
 
-            
-            it("", () => {
-                
+        describe("that is empty", () => {
+            describe("with a resource in the room", () => {
+                const _resourceId = "123";
+                let _resource: Resource;
+
+                beforeEach(() => {
+                    _resource = ResourceBuilder
+                        .create()
+                        .atPos(4, 4)
+                        .ofResourceType(RESOURCE_ENERGY)
+                        .withAmount(100)
+                        .withId(_resourceId)
+                        .build();
+
+                    _roomBuilder.withResource(_resource);
+                });
+
+                describe("and no stored target", () => {
+                    describe("successful pickup", () => {
+                        beforeEach(() => {
+                            _creepBuilder.pickup(_resource, OK);
+                        });
+
+                        it("won't save to memory", () => {
+                            getRole().run();
+
+                            assert.equal(_memory.target, undefined);
+                            _creepBuilder.mock.verify(c => c.pickup(_resource), Times.once());
+                        });
+                    });
+
+                    describe("not in range", () => {
+                        beforeEach(() => {
+                            _creepBuilder.pickup(_resource, ERR_NOT_IN_RANGE);
+                        });
+
+                        it("will store the id in memory and moveTo target", () => {
+                            getRole().run();
+
+                            assert.equal(_memory.target, _resourceId);
+                            _creepBuilder.mock.verify(c => c.moveTo(_resource), Times.once());
+                        });
+                    });
+                });
             });
         });
 
     });
-
 });

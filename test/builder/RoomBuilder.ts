@@ -1,5 +1,6 @@
 import * as TypeMoq from "typemoq";
-import { IMock, Mock, It, Times} from "typemoq";
+import * as _ from "lodash";
+import { IMock, Mock, It, Times } from "typemoq";
 import { AbstractBuilder } from "./AbstractBuilder";
 import { SpawnBuilder } from "./SpawnBuilder";
 import { assert } from "chai";
@@ -8,7 +9,7 @@ export class RoomBuilder extends AbstractBuilder<Room> {
     private _spawnBuilders: SpawnBuilder[] = [];
     private _resources: Resource[] = [];
     private _name: string = "";
-    
+
     public get name(): string {
         return this._name;
     }
@@ -38,10 +39,10 @@ export class RoomBuilder extends AbstractBuilder<Room> {
 
         return this;
     }
-    
+
     public withResource(resource: Resource): RoomBuilder {
         this._resources.push(resource);
-        
+
         return this;
     }
 
@@ -57,17 +58,23 @@ export class RoomBuilder extends AbstractBuilder<Room> {
                 return _.filter(spawns, b.filter);
             });
     }
-    
+
     private configureFindDroppedResource(): void {
         this.mock
             .setup(r => r.find(It.isValue(FIND_DROPPED_RESOURCES), It.isAny()))
             .returns((a, b) => {
+                console.log(`Meow`);
                 if (b === undefined || b.filter === undefined) {
                     return this._resources;
                 }
-                
+
                 return _.filter(this._resources, b.filter);
             });
+
+        this.mock
+            .setup(r => r.find(It.isValue(FIND_DROPPED_RESOURCES)))
+            .callback(a => console.log(`Woof`))
+            .returns(() => this._resources);
     }
 
     public build(): Room {
@@ -75,9 +82,13 @@ export class RoomBuilder extends AbstractBuilder<Room> {
         this.mock
             .setup(r => r.name)
             .returns(r => `Room_${this.name}`);
-        
+
         if (this._spawnBuilders.length > 0) {
             this.configureFindSpawns();
+        }
+
+        if (this._resources.length > 0) {
+            this.configureFindDroppedResource();
         }
 
         return this._mock.object;

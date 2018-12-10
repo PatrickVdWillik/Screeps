@@ -5,7 +5,7 @@ import { IMock, Mock, It } from "typemoq";
 export class CreepBuilder extends AbstractBuilder<Creep> {
     private _roomBuilder: RoomBuilder;
     private _room: Room;
-    
+
     constructor() {
         super();
     }
@@ -13,13 +13,13 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
     public static create(): CreepBuilder {
         return new CreepBuilder();
     }
-    
+
     public withRoom(room: Room): CreepBuilder {
         this._room = room;
-        
+
         return this;
     }
-    
+
     public withRoomBuilder(builder: RoomBuilder): CreepBuilder {
         this._roomBuilder = builder;
         return this;
@@ -50,9 +50,16 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
     }
 
     public pickup(target: Resource, result: CreepActionReturnCode | ERR_FULL): CreepBuilder {
+        console.log(`Configuring pickup() to return ${result}`);
         this.mock
             .setup(c => c.pickup(target))
             .returns(c => result);
+
+        return this;
+    }
+
+    public withCarryCapacity(capacity: number): CreepBuilder {
+        this.mock.setup(c => c.carryCapacity).returns(() => capacity);
 
         return this;
     }
@@ -61,11 +68,11 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
         if (this._roomBuilder) {
             this._room = this._roomBuilder.build();
         }
-        
+
         this.mock
             .setup(c => c.room)
             .returns(c => this._room);
-            
+
         return this.mock.object;
     }
 }
