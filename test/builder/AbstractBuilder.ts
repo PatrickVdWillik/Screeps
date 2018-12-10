@@ -1,6 +1,6 @@
 import * as TypeMoq from "typemoq";
 
-export class AbstractBuilder<T> {
+export abstract class AbstractBuilder<T> {
     protected _mock: TypeMoq.IMock<T> = TypeMoq.Mock.ofType<T>();
 
     protected constructor() { }
@@ -8,4 +8,6 @@ export class AbstractBuilder<T> {
     public get mock(): TypeMoq.IMock<T> {
         return this._mock;
     }
+    
+    public abstract build(): T;
 }
