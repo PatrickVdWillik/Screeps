@@ -50,7 +50,6 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
     }
 
     public pickup(target: Resource, result: CreepActionReturnCode | ERR_FULL): CreepBuilder {
-        console.log(`Configuring pickup() to return ${result}`);
         this.mock
             .setup(c => c.pickup(target))
             .returns(c => result);
@@ -61,6 +60,17 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
     public withCarryCapacity(capacity: number): CreepBuilder {
         this.mock.setup(c => c.carryCapacity).returns(() => capacity);
 
+        return this;
+    }
+    
+    public carry(resource: ResourceConstant, amount: number): CreepBuilder {
+        const store: StoreDefinition = {
+            energy: 0
+        };
+        store[resource] = amount;
+        
+        this.mock.setup(c => c.carry).returns(() => store);
+        
         return this;
     }
 

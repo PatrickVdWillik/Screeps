@@ -30,7 +30,30 @@ describe("Truck", () => {
                 .withCarryCapacity(200);
         });
 
-        describe("that is empty", () => {
+        describe("that isn't full", () => {
+            describe("without a task", () => {
+                beforeEach(() => {
+                    _memory.task = undefined;
+                    _roomBuilder.withoutResources();
+                });
+                
+                it("will change to loading", () => {
+                    getRole().run();
+                    
+                    assert.equal(_memory.task, "loading");
+                });
+            });
+            
+            describe("without anything to pickup", () => {
+                beforeEach(() => {
+                    _roomBuilder.withoutResources();
+                });
+                
+                it("won't do anything", () => {
+                    getRole().run();
+                });
+            });
+            
             describe("with a resource in the room", () => {
                 const _resourceId = "123";
                 let _resource: Resource;
@@ -73,9 +96,23 @@ describe("Truck", () => {
                             _creepBuilder.mock.verify(c => c.moveTo(_resource), Times.once());
                         });
                     });
+                    
+                    describe("fully loaded after pickup", () => {
+                        beforeEach(() => {
+                            _creepBuilder
+                                .carry(RESOURCE_ENERGY, 150)
+                                .pickup(_resource, OK);
+                            
+                        });
+                        
+                        it.only("will change to delivering", () => {
+                            getRole().run();    
+                            
+                            assert.equal(_memory.task, "delivering");
+                        });
+                    })
                 });
             });
         });
-
     });
 });

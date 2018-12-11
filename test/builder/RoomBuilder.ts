@@ -7,7 +7,7 @@ import { assert } from "chai";
 
 export class RoomBuilder extends AbstractBuilder<Room> {
     private _spawnBuilders: SpawnBuilder[] = [];
-    private _resources: Resource[] = [];
+    private _resources: Resource[];
     private _name: string = "";
 
     public get name(): string {
@@ -41,8 +41,18 @@ export class RoomBuilder extends AbstractBuilder<Room> {
     }
 
     public withResource(resource: Resource): RoomBuilder {
+        if (this._resources === undefined) {
+            this._resources = [];
+        }
+        
         this._resources.push(resource);
 
+        return this;
+    }
+    
+    public withoutResources(): RoomBuilder {
+        this._resources = [];
+        
         return this;
     }
 
@@ -63,7 +73,6 @@ export class RoomBuilder extends AbstractBuilder<Room> {
         this.mock
             .setup(r => r.find(It.isValue(FIND_DROPPED_RESOURCES), It.isAny()))
             .returns((a, b) => {
-                console.log(`Meow`);
                 if (b === undefined || b.filter === undefined) {
                     return this._resources;
                 }
@@ -73,7 +82,6 @@ export class RoomBuilder extends AbstractBuilder<Room> {
 
         this.mock
             .setup(r => r.find(It.isValue(FIND_DROPPED_RESOURCES)))
-            .callback(a => console.log(`Woof`))
             .returns(() => this._resources);
     }
 
@@ -87,7 +95,7 @@ export class RoomBuilder extends AbstractBuilder<Room> {
             this.configureFindSpawns();
         }
 
-        if (this._resources.length > 0) {
+        if (this._resources) {
             this.configureFindDroppedResource();
         }
 
