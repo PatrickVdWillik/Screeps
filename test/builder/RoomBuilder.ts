@@ -7,6 +7,7 @@ import { assert } from "chai";
 
 export class RoomBuilder extends AbstractBuilder<Room> {
     private _spawnBuilders: SpawnBuilder[] = [];
+    private _spawns: StructureSpawn[];
     private _resources: Resource[];
     private _name: string = "";
 
@@ -28,10 +29,17 @@ export class RoomBuilder extends AbstractBuilder<Room> {
         return this;
     }
 
-    public withSpawn(builderFn: (builder: SpawnBuilder) => void): RoomBuilder {
-        const builder = SpawnBuilder.create();
-        builderFn(builder);
-        return this.withSpawnBuilder(builder);
+    public withSpawn(builder: StructureSpawn): RoomBuilder;
+    public withSpawn(builder: ((builder: SpawnBuilder) => void)): RoomBuilder;
+    public withSpawn(builder: StructureSpawn | ((builder: SpawnBuilder) => void)): RoomBuilder {
+        if (typeof(builder) === "function")  {
+            const spawnBuilder = SpawnBuilder.create();
+            builder(spawnBuilder);
+            return this.withSpawnBuilder(spawnBuilder);           
+        }
+        
+        this._spawns.push(builder);
+        return this;
     }
 
     public withSpawnBuilder(builder: SpawnBuilder): RoomBuilder {
@@ -56,16 +64,27 @@ export class RoomBuilder extends AbstractBuilder<Room> {
         return this;
     }
 
-    // TODO: Re-factor to allow usage without a filter.
     private configureFindSpawns(): void {
-        const spawns = this._spawnBuilders.map(s => s.build());
+        let spawns: StructureSpawn[] = [];
+        if (_.any(this._spawnBuilders)) {
+            spawns = this._spawnBuilders.map(s => s.build());
+        }
+        
+        if (_.any(this._spawns)) {
+            spawns = spawns.concat(this._spawns);
+        }
+
         this._mock
             .setup(r => r.find(TypeMoq.It.isValue(FIND_MY_SPAWNS), TypeMoq.It.isAny()))
             .callback((a, b) => {
                 assert.isTrue(typeof b.filter === "function");
             })
             .returns((a, b) => {
-                return _.filter(spawns, b.filter);
+                if (b && b.filter !== undefined) {
+                    return _.filter(spawns, b.filter);
+                }
+                
+                return spawns;
             });
     }
 
@@ -91,7 +110,7 @@ export class RoomBuilder extends AbstractBuilder<Room> {
             .setup(r => r.name)
             .returns(r => `Room_${this.name}`);
 
-        if (this._spawnBuilders.length > 0) {
+        if (_.any(this._spawnBuilders) || _.any(this._spawns)) {
             this.configureFindSpawns();
         }
 

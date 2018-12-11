@@ -2,35 +2,36 @@ import { IMock, Mock, It, Times } from "typemoq";
 import { assert } from "chai";
 import { CreepBuilder } from "../../builder/CreepBuilder";
 import { RoomBuilder } from "../../builder/RoomBuilder";
+import { SpawnBuilder } from "../../builder/SpawnBuilder";
 import { ResourceBuilder } from "../../builder/ResourceBuilder";
 import { Truck } from "../../../src/roles/Truck";
 import { Game } from "../mock";
 
 describe("Truck", () => {
+    let _creepBuilder: CreepBuilder;
+    let _roomBuilder: RoomBuilder;
+    const _memory: any = {
+        role: "Truck"
+    };
+
+    function getRole(): Truck {
+        return new Truck(_creepBuilder.build());
+    }
+
+    beforeEach(() => {
+        // @ts-ignore : allow adding Game to global
+        global.Game = _.clone(Game);
+
+        _roomBuilder = RoomBuilder.create();
+
+        _creepBuilder = CreepBuilder.create()
+            .withRoomBuilder(_roomBuilder)
+            .withMemory(_memory)
+            .withCarryCapacity(200);
+    });
+        
     describe("isn't loaded", () => {
-        let _creepBuilder: CreepBuilder;
-        let _roomBuilder: RoomBuilder;
-        const _memory: any = {
-            role: "Truck"
-        };
-
-        function getRole(): Truck {
-            return new Truck(_creepBuilder.build());
-        }
-
-        beforeEach(() => {
-            // @ts-ignore : allow adding Game to global
-            global.Game = _.clone(Game);
-
-            _roomBuilder = RoomBuilder.create();
-
-            _creepBuilder = CreepBuilder.create()
-                .withRoomBuilder(_roomBuilder)
-                .withMemory(_memory)
-                .withCarryCapacity(200);
-        });
-
-        describe("that isn't full", () => {
+        describe("that is empty", () => {
             describe("without a task", () => {
                 beforeEach(() => {
                     _memory.task = undefined;
@@ -57,7 +58,7 @@ describe("Truck", () => {
             describe("with a resource in the room", () => {
                 const _resourceId = "123";
                 let _resource: Resource;
-
+    
                 beforeEach(() => {
                     _resource = ResourceBuilder
                         .create()
@@ -66,32 +67,40 @@ describe("Truck", () => {
                         .withAmount(100)
                         .withId(_resourceId)
                         .build();
-
+    
                     _roomBuilder.withResource(_resource);
                 });
-
+    
                 describe("and no stored target", () => {
                     describe("successful pickup", () => {
                         beforeEach(() => {
                             _creepBuilder.pickup(_resource, OK);
                         });
-
-                        it("won't save to memory", () => {
+    
+                        it("won't save id to memory", () => {
                             getRole().run();
-
+    
                             assert.equal(_memory.target, undefined);
                             _creepBuilder.mock.verify(c => c.pickup(_resource), Times.once());
                         });
+                        
+                        describe("and not fully loaded after pickup", () => {
+                            it("will stay in loading state", () => {
+                                getRole().run();
+                                
+                                assert.equal(_memory.task, "loading");
+                            });                            
+                        });
                     });
-
+    
                     describe("not in range", () => {
                         beforeEach(() => {
                             _creepBuilder.pickup(_resource, ERR_NOT_IN_RANGE);
                         });
-
+    
                         it("will store the id in memory and moveTo target", () => {
                             getRole().run();
-
+    
                             assert.equal(_memory.target, _resourceId);
                             _creepBuilder.mock.verify(c => c.moveTo(_resource), Times.once());
                         });
@@ -105,14 +114,77 @@ describe("Truck", () => {
                             
                         });
                         
-                        it.only("will change to delivering", () => {
+                        it("will change to delivering", () => {
                             getRole().run();    
                             
                             assert.equal(_memory.task, "delivering");
                         });
-                    })
+                    });
+                });
+                
+                describe("with a stored target", () => {
+                    beforeEach(() => {
+                        _memory.target = _resourceId;
+                        _memory.task = "loading";
+                        Game.objects[_resourceId] = _resource;
+                    });
+                    
+                    it("won't call room.find()", () => {
+                        getRole().run();
+                        
+                        _roomBuilder.mock.verify(r => r.find(It.isValue(FIND_DROPPED_RESOURCES)), Times.never());
+                    });
                 });
             });
         });
     });
+    
+    describe("that is partially loaded", () => {
+        beforeEach(() => {
+            _creepBuilder.carry(RESOURCE_ENERGY, 150);
+        });
+        
+        describe("and cannot find another drop", () => {
+            beforeEach(() => {
+                _roomBuilder.withoutResources();
+            });
+            
+            it("will switch to deliver", () => {
+                getRole().run();
+                
+                assert.equal(_memory.task, "delivering");
+            });
+        });
+    });    
+
+    describe("that is full", () => {
+        describe("without a task", () => {
+            beforeEach(() => {
+                _memory.task = undefined;
+                _roomBuilder.withoutResources();
+                _creepBuilder.carry(RESOURCE_ENERGY, 200);
+            });
+            
+            it("will switch to delivery", () => {
+                getRole().run();
+                
+                assert.equal(_memory.task, "delivering");
+            });
+        });
+        
+        describe("with empty spawn", () => {
+            let _spawn: StructureSpawn;
+            
+            beforeEach(() => {
+                _spawn = SpawnBuilder.create()
+                    .withEnergy(0)
+                    .build();
+                _roomBuilder.withSpawn(_spawn);
+            });
+            
+            it("will deliver to spawn", () => {
+                
+            });
+        });
+    });    
 });

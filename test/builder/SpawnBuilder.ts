@@ -33,8 +33,20 @@ export class SpawnBuilder extends AbstractBuilder<StructureSpawn> {
 
         return this;
     }
+    
+    public withEnergy(amount: number): SpawnBuilder {
+        this.mock
+            .setup(s => s.energy)
+            .returns(() => amount);
+            
+        return this;
+    }
 
     public build(): StructureSpawn {
+        this.mock
+            .setup(s => s.energyCapacity)
+            .returns(() => SPAWN_ENERGY_CAPACITY);
+            
         return this._mock.object;
     }
 }

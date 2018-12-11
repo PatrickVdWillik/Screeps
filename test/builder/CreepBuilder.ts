@@ -68,6 +68,7 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
             energy: 0
         };
         store[resource] = amount;
+        console.log(`${JSON.stringify(store)}`)
         
         this.mock.setup(c => c.carry).returns(() => store);
         

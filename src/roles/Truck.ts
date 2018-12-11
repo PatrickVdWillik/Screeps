@@ -4,25 +4,72 @@ export class Truck {
 
     public run(): void {
         if ((<any>this._creep.memory).task === undefined) {
-            (<any>this._creep.memory).task = "loading";
-        }
-        
-        const resources: Resource[] = this._creep.room.find(FIND_DROPPED_RESOURCES);
-        if (resources.length === 0) return;
-        
-        const resource = resources[0];
-        const result = this._creep.pickup(resource);
-        if (result === OK) {
             if (_.sum(this._creep.carry) >= this._creep.carryCapacity) {
-                (<any>this._creep.memory).task = "delivering";
+                this.startDelivery();
+            } else {
+                this.startLoading();
+            }
+        }
+
+        const currentTask = (<any>this._creep.memory).task;
+        if (currentTask === "loading") {
+            this.runLoading();
+        } else if (currentTask === "delivering") {
+            this.runDelivering();
+        }
+    }
+    
+    private startLoading(): void {
+        (<any>this._creep.memory).task = "loading";
+    }
+    
+    private startDelivery(): void {
+        (<any>this._creep.memory).task = "delivering";        
+    }
+    
+    private runLoading(): void {
+        const resource = this.getResource();
+        if (!resource) {
+            const currentCarry = _.sum(this._creep.carry);
+            console.log(`Not resource found, currently carrying ${currentCarry}: ${JSON.stringify(this._creep.carry)}`);
+            if (currentCarry > 0) {
+                this.startDelivery();
             }
             
             return;
         }
 
-        if (result === ERR_NOT_IN_RANGE) {
+        const result = this._creep.pickup(resource);
+        if (result === OK) {
+            const totalCarry = _.sum(this._creep.carry);
+            if (totalCarry + resource.amount >= this._creep.carryCapacity) {
+                this.startDelivery();
+            }
+        } else if (result === ERR_NOT_IN_RANGE) {
             this._creep.moveTo(resource);
             (<any>this._creep.memory).target = resource.id;
+        }        
+    }
+    
+    private getResource(): Resource | null {
+        if ((<any>this._creep.memory).target) {
+            const obj = Game.getObjectById<Resource>((<any>this._creep.memory).target)!;
+            if (obj) {
+                return obj;
+            }
+            
+            (<any>this._creep.memory).target = undefined;
         }
+        
+        const resources: Resource[] = this._creep.room.find(FIND_DROPPED_RESOURCES);
+        if (_.any(resources)) {
+            return resources[0];
+        }
+        
+        return null;        
+    }
+    
+    private runDelivering(): void {
+        
     }
 }
