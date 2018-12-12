@@ -18,24 +18,23 @@ export class Truck {
             this.runDelivering();
         }
     }
-    
+
     private startLoading(): void {
         (<any>this._creep.memory).task = "loading";
     }
-    
+
     private startDelivery(): void {
-        (<any>this._creep.memory).task = "delivering";        
+        (<any>this._creep.memory).task = "delivering";
     }
-    
+
     private runLoading(): void {
         const resource = this.getResource();
         if (!resource) {
             const currentCarry = _.sum(this._creep.carry);
-            console.log(`Not resource found, currently carrying ${currentCarry}: ${JSON.stringify(this._creep.carry)}`);
             if (currentCarry > 0) {
                 this.startDelivery();
             }
-            
+
             return;
         }
 
@@ -48,28 +47,43 @@ export class Truck {
         } else if (result === ERR_NOT_IN_RANGE) {
             this._creep.moveTo(resource);
             (<any>this._creep.memory).target = resource.id;
-        }        
+        } else {
+            console.log(`Error picking up resource: ${result}. Resource was ${resource.id} (undefined: ${resource === undefined})`);
+        }
     }
-    
+
     private getResource(): Resource | null {
         if ((<any>this._creep.memory).target) {
             const obj = Game.getObjectById<Resource>((<any>this._creep.memory).target)!;
             if (obj) {
                 return obj;
             }
-            
+
             (<any>this._creep.memory).target = undefined;
         }
-        
+
         const resources: Resource[] = this._creep.room.find(FIND_DROPPED_RESOURCES);
         if (_.any(resources)) {
             return resources[0];
         }
-        
-        return null;        
+
+        return null;
     }
-    
+
     private runDelivering(): void {
-        
+        const spawns = this._creep.room.find(FIND_MY_SPAWNS, {
+            filter: s => true
+        });
+
+        console.log(`Spawns found: ${spawns.length}`);
+        if (!_.any(spawns)) return;
+
+        const spawn = spawns[0];
+        const result = this._creep.transfer(spawn, RESOURCE_ENERGY, this._creep.carry[RESOURCE_ENERGY]);
+        if (result === ERR_NOT_IN_RANGE) {
+            this._creep.moveTo(spawn);
+        } else {
+            console.log(`Transfer result is ${result}`);
+        }
     }
 }

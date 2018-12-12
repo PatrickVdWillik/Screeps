@@ -1,17 +1,20 @@
 import { AbstractBuilder } from "./AbstractBuilder";
 import { RoomBuilder } from "./RoomBuilder";
-import { IMock, Mock, It } from "typemoq";
+import { IMock, Mock, It, MockBehavior } from "typemoq";
 
 export class CreepBuilder extends AbstractBuilder<Creep> {
     private _roomBuilder: RoomBuilder;
     private _room: Room;
+    private _carry: StoreDefinition = {
+        energy: 0
+    };
 
-    constructor() {
-        super();
+    constructor(mockBehavior: MockBehavior) {
+        super(mockBehavior);
     }
 
-    public static create(): CreepBuilder {
-        return new CreepBuilder();
+    public static create(mockBehavior: MockBehavior = MockBehavior.Strict): CreepBuilder {
+        return new CreepBuilder(mockBehavior);
     }
 
     public withRoom(room: Room): CreepBuilder {
@@ -49,9 +52,17 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
         return this;
     }
 
+    public transfer<T extends Creep | Structure>(target: T, resourceType: ResourceConstant, result: CreepActionReturnCode): CreepBuilder {
+        this.mock
+            .setup(c => c.transfer(It.isValue(target), It.isAny(), It.isAnyNumber()))
+            .callback((t, r) => console.log(`Transfering ${r} to ${t.id}`))
+            .returns(() => result);
+
+        return this;
+    }
     public pickup(target: Resource, result: CreepActionReturnCode | ERR_FULL): CreepBuilder {
         this.mock
-            .setup(c => c.pickup(target))
+            .setup(c => c.pickup(It.is((t) => target.id == t.id)))
             .returns(c => result);
 
         return this;
@@ -62,16 +73,10 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
 
         return this;
     }
-    
+
     public carry(resource: ResourceConstant, amount: number): CreepBuilder {
-        const store: StoreDefinition = {
-            energy: 0
-        };
-        store[resource] = amount;
-        console.log(`${JSON.stringify(store)}`)
-        
-        this.mock.setup(c => c.carry).returns(() => store);
-        
+        this._carry[resource] = amount;
+
         return this;
     }
 
@@ -83,6 +88,8 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
         this.mock
             .setup(c => c.room)
             .returns(c => this._room);
+
+        this.mock.setup(c => c.carry).returns(() => this._carry);
 
         return this.mock.object;
     }

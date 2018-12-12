@@ -7,9 +7,17 @@ import { assert } from "chai";
 
 export class RoomBuilder extends AbstractBuilder<Room> {
     private _spawnBuilders: SpawnBuilder[] = [];
-    private _spawns: StructureSpawn[];
+    private _spawns: StructureSpawn[] = [];
     private _resources: Resource[];
     private _name: string = "";
+
+    public get resources(): Resource[] {
+        return this._resources;
+    }
+
+    public get spawns(): StructureSpawn[] {
+        return this._spawns.concat(this._spawnBuilders.map(sb => sb.build()));
+    }
 
     public get name(): string {
         return this._name;
@@ -32,12 +40,12 @@ export class RoomBuilder extends AbstractBuilder<Room> {
     public withSpawn(builder: StructureSpawn): RoomBuilder;
     public withSpawn(builder: ((builder: SpawnBuilder) => void)): RoomBuilder;
     public withSpawn(builder: StructureSpawn | ((builder: SpawnBuilder) => void)): RoomBuilder {
-        if (typeof(builder) === "function")  {
+        if (typeof (builder) === "function") {
             const spawnBuilder = SpawnBuilder.create();
             builder(spawnBuilder);
-            return this.withSpawnBuilder(spawnBuilder);           
+            return this.withSpawnBuilder(spawnBuilder);
         }
-        
+
         this._spawns.push(builder);
         return this;
     }
@@ -52,15 +60,15 @@ export class RoomBuilder extends AbstractBuilder<Room> {
         if (this._resources === undefined) {
             this._resources = [];
         }
-        
+
         this._resources.push(resource);
 
         return this;
     }
-    
+
     public withoutResources(): RoomBuilder {
         this._resources = [];
-        
+
         return this;
     }
 
@@ -69,7 +77,7 @@ export class RoomBuilder extends AbstractBuilder<Room> {
         if (_.any(this._spawnBuilders)) {
             spawns = this._spawnBuilders.map(s => s.build());
         }
-        
+
         if (_.any(this._spawns)) {
             spawns = spawns.concat(this._spawns);
         }
@@ -83,7 +91,7 @@ export class RoomBuilder extends AbstractBuilder<Room> {
                 if (b && b.filter !== undefined) {
                     return _.filter(spawns, b.filter);
                 }
-                
+
                 return spawns;
             });
     }
@@ -110,13 +118,9 @@ export class RoomBuilder extends AbstractBuilder<Room> {
             .setup(r => r.name)
             .returns(r => `Room_${this.name}`);
 
-        if (_.any(this._spawnBuilders) || _.any(this._spawns)) {
-            this.configureFindSpawns();
-        }
 
-        if (this._resources) {
-            this.configureFindDroppedResource();
-        }
+        this.configureFindSpawns();
+        this.configureFindDroppedResource();
 
         return this._mock.object;
     }

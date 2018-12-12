@@ -10,6 +10,12 @@ export class SpawnBuilder extends AbstractBuilder<StructureSpawn> {
         return new SpawnBuilder();
     }
 
+    public withId(id: string): SpawnBuilder {
+        this.mock.setup(s => s.id).returns(() => id);
+
+        return this;
+    }
+
     public isNotSpawning(): SpawnBuilder {
         this.mock
             .setup(s => s.spawning)
@@ -33,12 +39,12 @@ export class SpawnBuilder extends AbstractBuilder<StructureSpawn> {
 
         return this;
     }
-    
+
     public withEnergy(amount: number): SpawnBuilder {
         this.mock
             .setup(s => s.energy)
             .returns(() => amount);
-            
+
         return this;
     }
 
@@ -46,7 +52,7 @@ export class SpawnBuilder extends AbstractBuilder<StructureSpawn> {
         this.mock
             .setup(s => s.energyCapacity)
             .returns(() => SPAWN_ENERGY_CAPACITY);
-            
+
         return this._mock.object;
     }
 }
