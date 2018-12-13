@@ -3,7 +3,7 @@ import * as TypeMoq from "typemoq";
 export abstract class AbstractBuilder<T> {
     protected _mock: TypeMoq.IMock<T>;
 
-    protected constructor(mockBehavior: TypeMoq.MockBehavior) {
+    protected constructor(mockBehavior: TypeMoq.MockBehavior = TypeMoq.MockBehavior.Loose) {
         this._mock = TypeMoq.Mock.ofType<T>();
     }
 

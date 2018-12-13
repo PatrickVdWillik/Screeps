@@ -1,5 +1,6 @@
 import { IMock, Mock, It, Times, MockBehavior } from "typemoq";
 import { assert } from "chai";
+import { SpawnFakeBuilder } from "../../fake/SpawnFakeBuilder";
 import { CreepBuilder } from "../../builder/CreepBuilder";
 import { RoomBuilder } from "../../builder/RoomBuilder";
 import { SpawnBuilder } from "../../builder/SpawnBuilder";
@@ -183,9 +184,10 @@ describe("Truck", () => {
             let _spawn: StructureSpawn;
 
             beforeEach(() => {
-                _spawn = SpawnBuilder.create()
-                    .withEnergy(0)
+                _spawn = SpawnFakeBuilder
+                    .create()
                     .withId("xyz")
+                    .withEnergy(0)
                     .build();
 
                 _roomBuilder.withSpawn(_spawn);
@@ -196,15 +198,13 @@ describe("Truck", () => {
                     .withRoomBuilder(_roomBuilder)
                     .withMemory(_memory)
                     .withCarryCapacity(200)
-                    //.transfer(_spawn, RESOURCE_ENERGY, ERR_NOT_IN_RANGE)
+                    .transfer(_spawn, RESOURCE_ENERGY, ERR_NOT_IN_RANGE)
                     .carry(RESOURCE_ENERGY, 100)
                     .moveTo(_spawn, OK);
 
             });
 
             it("will deliver to spawn", () => {
-                assert.isTrue(_spawn === _spawn);
-                assert.isTrue(_spawn == _spawn);
                 getRole().run();
 
                 _creepBuilder.mock.verify(c => c.transfer(It.isValue(_spawn), It.isValue(RESOURCE_ENERGY), It.isValue(100)), Times.once())

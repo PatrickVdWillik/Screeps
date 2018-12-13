@@ -15,7 +15,8 @@ module.exports = {
         "helper.ts",
         "integration.test.ts",
         "setup-node.js",
-        "/builder/"
+        "/builder/",
+        "/fake/"
     ],
     globals: {
         "ts-jest": {
