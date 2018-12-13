@@ -83,7 +83,7 @@ abstract class OwnedStructureFake<T extends StructureConstant = StructureConstan
     }    
 }
 
-class StructureSpawnFake extends OwnedStructureFake<STRUCTURE_SPAWN> implements StructureSpawn {
+export class StructureSpawnFake extends OwnedStructureFake<STRUCTURE_SPAWN> implements StructureSpawn {
     public readonly prototype: StructureSpawn;
     
     private _energyCapacity: number = SPAWN_ENERGY_CAPACITY;
@@ -144,35 +144,29 @@ class StructureSpawnFake extends OwnedStructureFake<STRUCTURE_SPAWN> implements 
     }
 }
 
-export class SpawnFakeBuilder {
-    private _fake: StructureSpawnFake = new StructureSpawnFake();
+export class StructureExtensionFake extends OwnedStructureFake<STRUCTURE_EXTENSION> implements StructureExtension {
+    public readonly prototype: StructureExtension;
     
-    private constructor() {
+    private _energyCapacity: number = 50;
+    private _energy: number = 0;
+    
+    public ExtensionFake() {
+        this.hits = EXTENSION_HITS;
+        this.hitsMax = EXTENSION_HITS;
     }
     
-    public static create(): SpawnFakeBuilder {
-        return new SpawnFakeBuilder();
-    }
-    
-    public withEnergy(amount: number): SpawnFakeBuilder {
-        this._fake.energy = amount;
-        
-        return this;
-    }
-    
-    public withHits(amount: number): SpawnFakeBuilder {
-        this._fake.hits = amount;
-        
-        return this;
-    }
-    
-    public withId(id: string): SpawnFakeBuilder {
-        this._fake.id = id;
-        
-        return this;
+    public get structureType(): STRUCTURE_EXTENSION {
+        return STRUCTURE_EXTENSION;
     }
 
-    public build(): StructureSpawn {
-        return this._fake;
+    public get energyCapacity(): number {
+        return this._energyCapacity; // TODO: Implement Support for RCL related size
     }
+    public get energy(): number {
+        return this._energy;
+    }
+    
+    public set energy(value: number) {
+        this._energy = value;
+    } 
 }

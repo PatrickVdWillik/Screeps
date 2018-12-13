@@ -55,7 +55,7 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
     public transfer<T extends Creep | Structure>(target: T, resourceType: ResourceConstant, result: CreepActionReturnCode): CreepBuilder {
         this.mock
             .setup(c => c.transfer(It.isValue(target), It.isAny(), It.isAnyNumber()))
-            .callback((t, r) => console.log(`Transfering ${r} to ${t.id}`))
+            //.callback((t, r) => console.log(`Transfering ${r} to ${t.id}`))
             .returns(() => result);
 
         return this;

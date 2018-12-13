@@ -1,6 +1,6 @@
 import { IMock, Mock, It, Times, MockBehavior } from "typemoq";
 import { assert } from "chai";
-import { SpawnFakeBuilder } from "../../fake/SpawnFakeBuilder";
+import { SpawnFakeBuilder } from "../../fake/FakeBuilders";
 import { CreepBuilder } from "../../builder/CreepBuilder";
 import { RoomBuilder } from "../../builder/RoomBuilder";
 import { SpawnBuilder } from "../../builder/SpawnBuilder";

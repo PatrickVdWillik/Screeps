@@ -77,7 +77,7 @@ export class Truck {
         const result = this._creep.transfer(spawn!, RESOURCE_ENERGY, this._creep.carry[RESOURCE_ENERGY]);
         if (result === OK) {
             (<any>this._creep.memory).target = undefined;
-        } else         if (result === ERR_NOT_IN_RANGE) {
+        } else if (result === ERR_NOT_IN_RANGE) {
             (<any>this._creep.memory).target = spawn.id;
             this._creep.moveTo(spawn);
         } else {

@@ -8,6 +8,7 @@ import { assert } from "chai";
 export class RoomBuilder extends AbstractBuilder<Room> {
     private _spawnBuilders: SpawnBuilder[] = [];
     private _spawns: StructureSpawn[] = [];
+    private _myStructures: AnyOwnedStructure[] = [];
     private _resources: Resource[];
     private _name: string = "";
 
@@ -47,6 +48,7 @@ export class RoomBuilder extends AbstractBuilder<Room> {
         }
 
         this._spawns.push(builder);
+        this._myStructures.push(builder);
         return this;
     }
 
@@ -56,6 +58,12 @@ export class RoomBuilder extends AbstractBuilder<Room> {
         return this;
     }
 
+    public withMyStructure(structure: AnyOwnedStructure): RoomBuilder {
+        this._myStructures.push(structure);
+        
+        return this;
+    }
+    
     public withResource(resource: Resource): RoomBuilder {
         if (this._resources === undefined) {
             this._resources = [];
@@ -111,6 +119,17 @@ export class RoomBuilder extends AbstractBuilder<Room> {
             .setup(r => r.find(It.isValue(FIND_DROPPED_RESOURCES)))
             .returns(() => this._resources);
     }
+    
+    private configureFindMyStructures(): void {
+        this.mock
+            .setup(r => r.find(FIND_MY_STRUCTURES, It.isAny()))
+            .returns((a, b) => {
+                if (b === undefined || b.filter === undefined) {
+                    return this._myStructures;
+                }
+                return _.filter(this._myStructures, b.filter);
+            });
+    }
 
     public build(): Room {
         this._name = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5);
@@ -120,6 +139,7 @@ export class RoomBuilder extends AbstractBuilder<Room> {
 
 
         this.configureFindSpawns();
+        this.configureFindMyStructures();
         this.configureFindDroppedResource();
 
         return this._mock.object;
