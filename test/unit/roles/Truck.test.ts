@@ -110,7 +110,7 @@ describe("Truck", () => {
                         getRole().run();
 
                         assert.equal(_memory.target, _resourceId);
-                        _creepBuilder.mock.verify(c => c.moveTo(It.isObjectWith(_resource)), Times.once());
+                        _creepBuilder.mock.verify(c => c.moveTo(_resource), Times.once());
                     });
                 });
 
