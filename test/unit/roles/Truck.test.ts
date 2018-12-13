@@ -182,33 +182,83 @@ describe("Truck", () => {
 
         describe("with empty spawn", () => {
             let _spawn: StructureSpawn;
-
+            
             beforeEach(() => {
-                _spawn = SpawnFakeBuilder
-                    .create()
-                    .withId("xyz")
-                    .withEnergy(0)
-                    .build();
-
-                _roomBuilder.withSpawn(_spawn);
-
-                console.log("s: " + JSON.stringify(_spawn));
                 _memory["task"] = "delivering";
-                _creepBuilder = CreepBuilder.create(MockBehavior.Strict)
+            
+
+                 _creepBuilder = CreepBuilder.create(MockBehavior.Strict)
                     .withRoomBuilder(_roomBuilder)
                     .withMemory(_memory)
                     .withCarryCapacity(200)
-                    .transfer(_spawn, RESOURCE_ENERGY, ERR_NOT_IN_RANGE)
-                    .carry(RESOURCE_ENERGY, 100)
-                    .moveTo(_spawn, OK);
-
+                    .carry(RESOURCE_ENERGY, 100);
             });
-
-            it("will deliver to spawn", () => {
-                getRole().run();
-
-                _creepBuilder.mock.verify(c => c.transfer(It.isValue(_spawn), It.isValue(RESOURCE_ENERGY), It.isValue(100)), Times.once())
-                _creepBuilder.mock.verify(c => c.moveTo(It.isAny()), Times.once())
+            
+            describe("with a full spawn", () => {
+                beforeEach(() => {
+                     _spawn = SpawnFakeBuilder.create()
+                        .withId("fullspawn")
+                        .withEnergy(300)
+                        .build();
+                    
+                    _roomBuilder.withSpawn(_spawn);
+                });
+                
+                it("won't do anything", () => {
+                    getRole().run();
+                    
+                    _creepBuilder.mock.verify(c => c.transfer(It.isValue(_spawn), It.isValue(RESOURCE_ENERGY), It.isAny()), Times.never());
+                });
+            });
+            
+            describe("with an empty spawn", () => {
+                beforeEach(() => {
+                    _spawn = SpawnFakeBuilder
+                        .create()
+                        .withId("xyz")
+                        .withEnergy(0)
+                        .build();        
+                        
+                    _roomBuilder.withSpawn(_spawn);                      
+                });
+                
+                describe("not adjacent to spawn", () => {
+                    beforeEach(() => {
+                        _creepBuilder
+                            .transfer(_spawn, RESOURCE_ENERGY, ERR_NOT_IN_RANGE)
+                            .moveTo(_spawn, OK);
+                    });
+        
+                    it("will deliver to spawn", () => {
+                        getRole().run();
+        
+                        _creepBuilder.mock.verify(c => c.transfer(It.isValue(_spawn), It.isValue(RESOURCE_ENERGY), It.isValue(100)), Times.once())
+                        _creepBuilder.mock.verify(c => c.moveTo(It.isValue(_spawn)), Times.once())
+                    });
+                    
+                    
+                    it("will store spawnId in memory", () => {
+                        getRole().run();
+                        
+                        assert.equal(_memory.target, _spawn.id);
+                    });
+                });      
+                
+                describe("adjacent to spawn", () => {
+                    beforeEach(() => {
+                        Game.objects[_spawn.id] = _spawn;
+                        _memory.target = _spawn.id;
+                        _creepBuilder
+                            .transfer(_spawn, RESOURCE_ENERGY, OK);
+                    });
+                    
+                    
+                    it("removes target from memory", () => {
+                        getRole().run();
+                        
+                        assert.equal(_memory.target, undefined);
+                    });
+                });                
             });
         });
     });

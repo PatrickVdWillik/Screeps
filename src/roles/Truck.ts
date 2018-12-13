@@ -71,19 +71,27 @@ export class Truck {
     }
 
     private runDelivering(): void {
-        const spawns = this._creep.room.find(FIND_MY_SPAWNS, {
-            filter: s => true
-        });
-
-        console.log(`Spawns found: ${spawns.length}`);
-        if (!_.any(spawns)) return;
-
-        const spawn = spawns[0];
-        const result = this._creep.transfer(spawn, RESOURCE_ENERGY, this._creep.carry[RESOURCE_ENERGY]);
-        if (result === ERR_NOT_IN_RANGE) {
+        const spawn = this.getDeliveryTarget();
+        if (!spawn) return;
+        
+        const result = this._creep.transfer(spawn!, RESOURCE_ENERGY, this._creep.carry[RESOURCE_ENERGY]);
+        if (result === OK) {
+            (<any>this._creep.memory).target = undefined;
+        } else         if (result === ERR_NOT_IN_RANGE) {
+            (<any>this._creep.memory).target = spawn.id;
             this._creep.moveTo(spawn);
         } else {
             console.log(`Transfer result is ${result}`);
         }
+    }
+    
+    private getDeliveryTarget(): Structure | null {
+        const spawns = this._creep.room.find(FIND_MY_SPAWNS, {
+            filter: s => s.energy < s.energyCapacity
+        });
+
+        if (!_.any(spawns)) return null;
+
+        return spawns[0];        
     }
 }
