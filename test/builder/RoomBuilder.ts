@@ -60,10 +60,10 @@ export class RoomBuilder extends AbstractBuilder<Room> {
 
     public withMyStructure(structure: AnyOwnedStructure): RoomBuilder {
         this._myStructures.push(structure);
-        
+
         return this;
     }
-    
+
     public withResource(resource: Resource): RoomBuilder {
         if (this._resources === undefined) {
             this._resources = [];
@@ -84,6 +84,7 @@ export class RoomBuilder extends AbstractBuilder<Room> {
         let spawns: StructureSpawn[] = [];
         if (_.any(this._spawnBuilders)) {
             spawns = this._spawnBuilders.map(s => s.build());
+            this._myStructures = this._myStructures.concat(spawns);
         }
 
         if (_.any(this._spawns)) {
@@ -119,7 +120,7 @@ export class RoomBuilder extends AbstractBuilder<Room> {
             .setup(r => r.find(It.isValue(FIND_DROPPED_RESOURCES)))
             .returns(() => this._resources);
     }
-    
+
     private configureFindMyStructures(): void {
         this.mock
             .setup(r => r.find(FIND_MY_STRUCTURES, It.isAny()))

@@ -1,6 +1,6 @@
 import { IMock, Mock, It, Times, MockBehavior } from "typemoq";
 import { assert } from "chai";
-import { SpawnFakeBuilder } from "../../fake/FakeBuilders";
+import { SpawnFakeBuilder, ExtensionFakeBuilder } from "../../fake/FakeBuilders";
 import { CreepBuilder } from "../../builder/CreepBuilder";
 import { RoomBuilder } from "../../builder/RoomBuilder";
 import { SpawnBuilder } from "../../builder/SpawnBuilder";
@@ -180,70 +180,65 @@ describe("Truck", () => {
             });
         });
 
-        describe("with empty spawn", () => {
+        describe("in delivering state", () => {
             let _spawn: StructureSpawn;
-            
+
             beforeEach(() => {
                 _memory["task"] = "delivering";
-            
 
-                 _creepBuilder = CreepBuilder.create(MockBehavior.Strict)
+                _creepBuilder = CreepBuilder.create(MockBehavior.Strict)
                     .withRoomBuilder(_roomBuilder)
                     .withMemory(_memory)
                     .withCarryCapacity(200)
                     .carry(RESOURCE_ENERGY, 100);
             });
-            
-            describe("with a full spawn", () => {
-                beforeEach(() => {
-                     _spawn = SpawnFakeBuilder.create()
-                        .withId("fullspawn")
-                        .withEnergy(300)
-                        .build();
-                    
-                    _roomBuilder.withSpawn(_spawn);
-                });
-                
-                it("won't do anything", () => {
-                    getRole().run();
-                    
-                    _creepBuilder.mock.verify(c => c.transfer(It.isValue(_spawn), It.isValue(RESOURCE_ENERGY), It.isAny()), Times.never());
-                });
-            });
-            
+
             describe("with an empty spawn", () => {
                 beforeEach(() => {
                     _spawn = SpawnFakeBuilder
                         .create()
                         .withId("xyz")
                         .withEnergy(0)
-                        .build();        
-                        
-                    _roomBuilder.withSpawn(_spawn);                      
+                        .build();
+
+                    _roomBuilder.withSpawn(_spawn);
                 });
-                
+
                 describe("not adjacent to spawn", () => {
                     beforeEach(() => {
                         _creepBuilder
                             .transfer(_spawn, RESOURCE_ENERGY, ERR_NOT_IN_RANGE)
                             .moveTo(_spawn, OK);
                     });
-        
+
                     it("will deliver to spawn", () => {
                         getRole().run();
-        
+
                         _creepBuilder.mock.verify(c => c.transfer(It.isValue(_spawn), It.isValue(RESOURCE_ENERGY), It.isValue(100)), Times.once())
                         _creepBuilder.mock.verify(c => c.moveTo(It.isValue(_spawn)), Times.once())
                     });
-                    
-                    
+
+
                     it("will store spawnId in memory", () => {
                         getRole().run();
-                        
+
                         assert.equal(_memory.target, _spawn.id);
                     });
-                });      
-                
+
+                    describe("and a stored id", () => {
+                        beforeEach(() => {
+                            _memory.target = _spawn.id;
+                            Game.objects[_spawn.id] = _spawn;
+                        });
+
+                        it("won't search the room", () => {
+                            getRole().run();
+
+                            _roomBuilder.mock.verify(r => r.find(FIND_MY_STRUCTURES, It.isAny()), Times.never());
+                        });
+                    });
+                });
+
                 describe("adjacent to spawn", () => {
                     beforeEach(() => {
                         Game.objects[_spawn.id] = _spawn;
@@ -251,15 +246,66 @@ describe("Truck", () => {
                         _creepBuilder
                             .transfer(_spawn, RESOURCE_ENERGY, OK);
                     });
-                    
-                    
+
+
                     it("removes target from memory", () => {
                         getRole().run();
-                        
+
                         assert.equal(_memory.target, undefined);
                     });
-                });                
+                });
             });
+
+            describe("with a full spawn", () => {
+                beforeEach(() => {
+                    _spawn = SpawnFakeBuilder.create()
+                        .withId("fullspawn")
+                        .withEnergy(300)
+                        .build();
+
+                    _roomBuilder.withSpawn(_spawn);
+                });
+
+                it("won't do anything", () => {
+                    getRole().run();
+
+                    _creepBuilder.mock.verify(c => c.transfer(It.isValue(_spawn), It.isValue(RESOURCE_ENERGY), It.isAny()), Times.never());
+                });
+
+                describe("and empty extension", () => {
+                    let _extension: StructureExtension;
+
+                    beforeEach(() => {
+                        _extension = ExtensionFakeBuilder.create()
+                            .withId("ext_123")
+                            .withEnergy(0)
+                            .build();
+
+                        _roomBuilder.withMyStructure(_extension);
+                        _creepBuilder.transfer(_extension, RESOURCE_ENERGY, OK);
+                    });
+
+                    it("will deliver to the extension", () => {
+                        getRole().run();
+
+                        _creepBuilder.mock.verify(c => c.transfer(It.isValue(_extension), It.isValue(RESOURCE_ENERGY), It.isAny()), Times.once());
+                    });
+                })
+            });
+
+            describe("with a stored target that doesn't exist anymore", () => {
+                beforeEach(() => {
+                    _memory.target = "does not exist";
+                    Game.objects[_memory.target] = null;
+                });
+
+                it("will search for new target", () => {
+                    getRole().run();
+
+                    _roomBuilder.mock.verify(r => r.find(FIND_MY_STRUCTURES, It.isAny()), Times.once());
+                    assert.equal(_memory.target, undefined);
+                })
+            })
         });
     });
 });

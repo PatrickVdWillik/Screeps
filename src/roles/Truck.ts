@@ -73,7 +73,7 @@ export class Truck {
     private runDelivering(): void {
         const spawn = this.getDeliveryTarget();
         if (!spawn) return;
-        
+
         const result = this._creep.transfer(spawn!, RESOURCE_ENERGY, this._creep.carry[RESOURCE_ENERGY]);
         if (result === OK) {
             (<any>this._creep.memory).target = undefined;
@@ -84,14 +84,21 @@ export class Truck {
             console.log(`Transfer result is ${result}`);
         }
     }
-    
+
     private getDeliveryTarget(): Structure | null {
-        const spawns = this._creep.room.find(FIND_MY_SPAWNS, {
-            filter: s => s.energy < s.energyCapacity
+        if ((<any>this._creep.memory).target) {
+            const target = Game.getObjectById<Structure>((<any>this._creep.memory).target);
+            if (target) { return target; }
+
+            (<any>this._creep.memory).target = undefined;
+        }
+
+        const spawns = this._creep.room.find(FIND_MY_STRUCTURES, {
+            filter: (s: StructureSpawn | StructureExtension) => s.energy < s.energyCapacity
         });
 
         if (!_.any(spawns)) return null;
 
-        return spawns[0];        
+        return spawns[0];
     }
 }
