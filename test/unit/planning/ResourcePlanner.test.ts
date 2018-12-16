@@ -5,6 +5,7 @@ import { RoomBuilder } from "../../builder/RoomBuilder";
 import { CreepBuilder } from "../../builder/CreepBuilder";
 
 describe("ResourcePlanner", () => {
+    const SourceId: string = "source_1";
     let _myCreeps: Creep[];
     let _roomBuilder: RoomBuilder;
     let _buildQueue: IMock<ISpawnQueue>;
@@ -18,11 +19,6 @@ describe("ResourcePlanner", () => {
     beforeEach(() => {
         _myCreeps = [];
 
-        let _source = Mock.ofType<Source>();
-        _source.setup(s => s.id).returns(() => "source_1");
-        _source.setup(s => s.energyCapacity).returns(() => SOURCE_ENERGY_CAPACITY);
-        _source.setup(s => s.energy).returns(() => SOURCE_ENERGY_CAPACITY);
-
         _roomBuilder = RoomBuilder
             .create()
             .withMemory(_memory)
@@ -33,7 +29,20 @@ describe("ResourcePlanner", () => {
     });
 
     describe("in a rooom with a source", () => {
+        beforeEach(() => {
+            let _source = Mock.ofType<Source>();
+            _source.setup(s => s.id).returns(() => SourceId);
+            _source.setup(s => s.energyCapacity).returns(() => SOURCE_ENERGY_CAPACITY);
+            _source.setup(s => s.energy).returns(() => SOURCE_ENERGY_CAPACITY);
+        });
+
         describe("without miners and trucks", () => {
+            it("will spawn a miner", () => {
+                run();
+
+                _buildQueue.verify(q => q.push(It.isValue("Miner"), It.isObjectWith({ maxCost: 300 }), It.isValue(QueuePriority.Critical)), Times.once());
+            });
+
             describe("with a queued miner", () => {
                 beforeEach(() => {
                     _buildQueue.setup(q => q.getRequestCount(It.isValue("Miner"))).returns(() => 1);
@@ -42,15 +51,24 @@ describe("ResourcePlanner", () => {
                 it("won't queue another miner", () => {
                     run();
 
-                    _buildQueue.verify(q => q.push(It.isValue("Miner"), It.isAny(), It.isAny(), It.isAny()), Times.never());
+                    _buildQueue.verify(q => q.push(It.isValue("Miner"), It.isAny(), It.isAny()), Times.never());
                 });
             });
 
-            it("will spawn a miner", () => {
-                run();
+            describe("with no stored energy", () => {
+                beforeEach(() => {
+                    _roomBuilder
+                        .withEnergyCapacity(300)
+                        .withEnergy(0);
+                });
 
-                _buildQueue.verify(q => q.push(It.isValue("Miner"), 300, It.isAny(), QueuePriority.Critical), Times.once());
-            });
+                it.only("will request a creep with minimum body size", () => {
+                    run();
+
+                    const minPrice = _.sum([WORK, CARRY, MOVE], (part) => BODYPART_COST[part]);
+                    _buildQueue.verify(q => q.push(It.isValue("Miner"), It.isObjectWith({ maxCost: minPrice }), It.isAny()), Times.once());
+                });
+            })
         });
 
         describe("without a truck", () => {
@@ -70,15 +88,41 @@ describe("ResourcePlanner", () => {
                 it("won't queue another truck", () => {
                     run();
 
-                    _buildQueue.verify(q => q.push("Truck", It.isAny(), It.isAny(), It.isAny()), Times.never());
+                    _buildQueue.verify(q => q.push("Truck", It.isAny(), It.isAny()), Times.never());
                 });
             });
 
             it("will spawn a truck", () => {
                 run();
 
-                _buildQueue.verify(q => q.push(It.isValue("Truck"), 300, It.isAny(), QueuePriority.Critical), Times.once());
+                _buildQueue.verify(q => q.push(It.isValue("Truck"), It.isObjectWith({ maxCost: 300 }), It.isValue(QueuePriority.Critical)), Times.once());
             });
         });
+
+        describe("with a miner and truck", () => {
+            beforeEach(() => {
+                const miner = CreepBuilder
+                    .create()
+                    .withName("Miner1")
+                    .withBody([WORK, MOVE, CARRY])
+                    .withMemory({ role: "Miner", target: SourceId })
+                    .build();
+
+                const truck = CreepBuilder
+                    .create()
+                    .withName("Truck2")
+                    .withBody([MOVE, CARRY, MOVE, CARRY])
+                    .withMemory({ role: "Truck" })
+                    .build();
+
+                _myCreeps = [miner, truck];
+            });
+
+            it("will attempt to create biggest creep possible", () => {
+                run();
+
+
+            })
+        })
     });
 });

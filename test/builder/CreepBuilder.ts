@@ -3,8 +3,11 @@ import { RoomBuilder } from "./RoomBuilder";
 import { IMock, Mock, It, MockBehavior } from "typemoq";
 
 export class CreepBuilder extends AbstractBuilder<Creep> {
+    private _name: string;
     private _roomBuilder: RoomBuilder;
     private _room: Room;
+    private _body: BodyPartDefinition[];
+
     private _carry: StoreDefinition = {
         energy: 0
     };
@@ -15,6 +18,22 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
 
     public static create(mockBehavior: MockBehavior = MockBehavior.Strict): CreepBuilder {
         return new CreepBuilder(mockBehavior);
+    }
+
+    public withName(value: string): CreepBuilder {
+        this._name = value;
+
+        return this;
+    }
+
+    public withBody(body: BodyPartConstant[]): CreepBuilder {
+        this._body = _.map(body, p => ({
+            type: p,
+            boost: undefined,
+            hits: 100
+        }));
+
+        return this;
     }
 
     public withRoom(room: Room): CreepBuilder {
@@ -86,8 +105,17 @@ export class CreepBuilder extends AbstractBuilder<Creep> {
         }
 
         this.mock
+            .setup(c => c.name)
+            .returns(() => this._name);
+
+        this.mock
             .setup(c => c.room)
             .returns(c => this._room);
+
+        if (this._body) {
+            this.mock.setup(c => c.body).returns(() => this._body);
+        }
+
 
         this.mock.setup(c => c.carry).returns(() => this._carry);
 

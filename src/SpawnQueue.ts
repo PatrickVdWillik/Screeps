@@ -8,16 +8,25 @@ export enum QueuePriority {
 export interface SpawnRequest {
     role: string;
     priority: QueuePriority;
-    idealSize: boolean;
+    details: SpawnDetails;
     body?: BodyPartConstant[];
     memory?: any;
+}
+
+export interface SpawnDetails {
+    maxCost: number;
+    memory?: any;
+    work?: number;
+    carry?: number;
+    move?: number;
+    tough?: number;
 }
 
 export interface ISpawnQueue {
     readonly length: number;
     peek(): SpawnRequest | null;
     completeRequest(): void;
-    push(role: string, maxCost: number, memory: any, priority: QueuePriority): void;
+    push(role: string, details: SpawnDetails, priority: QueuePriority): void;
     getRequestCount(role: string): number;
 }
 
@@ -35,7 +44,7 @@ export class SpawnQueue implements ISpawnQueue {
         throw new Error("Method not implemented.");
     }
 
-    public push(role: string, maxCost: number, memory: any, priority: QueuePriority): void {
+    public push(role: string, details: SpawnDetails, priority: QueuePriority): void {
         throw new Error("Method not implemented.");
     }
 

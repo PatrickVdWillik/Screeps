@@ -8,7 +8,7 @@ module.exports = {
         "^.+\\.tsx?$": "ts-jest"
     },
     testRegex: "(/test/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
-    moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node", "d.ts"],
+    moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
     testPathIgnorePatterns: [
         "/node_modules/",
         "mock.ts",

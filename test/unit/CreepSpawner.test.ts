@@ -36,8 +36,8 @@ describe("CreepSpawner", () => {
         let _spawnBuilder: SpawnBuilder;
         let _spawnRequest: SpawnRequest = {
             role: "Worker",
+            details: { maxCost: 300 },
             priority: QueuePriority.Normal,
-            idealSize: true,
             body: [WORK, MOVE, CARRY]
         };
 
