@@ -18,6 +18,7 @@ export interface ISpawnQueue {
     peek(): SpawnRequest | null;
     completeRequest(): void;
     push(role: string, maxCost: number, memory: any, priority: QueuePriority): void;
+    getRequestCount(role: string): number;
 }
 
 export class SpawnQueue implements ISpawnQueue {
@@ -35,6 +36,10 @@ export class SpawnQueue implements ISpawnQueue {
     }
 
     public push(role: string, maxCost: number, memory: any, priority: QueuePriority): void {
+        throw new Error("Method not implemented.");
+    }
+
+    public getRequestCount(role: string): number {
         throw new Error("Method not implemented.");
     }
 }

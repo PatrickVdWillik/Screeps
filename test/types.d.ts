@@ -1,15 +1,6 @@
-// example declaration file - remove these and add your own custom typings
-
-// memory extension samples
 interface CreepMemory {
   role: string;
   room: string;
-}
-
-declare enum QueuePriority {
-  //Low, Normal,
-  //Important,
-  Critical
 }
 
 interface Memory {

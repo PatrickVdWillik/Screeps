@@ -13,8 +13,12 @@ export class RoomBuilder extends AbstractBuilder<Room> {
     private _resources: Resource[] = [];
     private _myCreeps: Creep[] = [];
     private _name: string = "";
-    private _energyCapacity: number;
-    private _energy: number;
+    private _energyCapacity: number = 300;
+    private _energy: number = 300;
+
+    private constructor() {
+        super();
+    }
 
     public get resources(): Resource[] {
         return this._resources;
@@ -26,10 +30,6 @@ export class RoomBuilder extends AbstractBuilder<Room> {
 
     public get name(): string {
         return this._name;
-    }
-
-    private constructor() {
-        super();
     }
 
     public static create(): RoomBuilder {
@@ -181,6 +181,14 @@ export class RoomBuilder extends AbstractBuilder<Room> {
         this.mock
             .setup(r => r.memory)
             .returns(() => this._memory);
+
+        this.mock
+            .setup(r => r.energyAvailable)
+            .returns(() => this._energy);
+
+        this.mock
+            .setup(r => r.energyCapacityAvailable)
+            .returns(() => this._energyCapacity);
 
         this.configureFindSpawns();
         this.configureFindMyStructures();
