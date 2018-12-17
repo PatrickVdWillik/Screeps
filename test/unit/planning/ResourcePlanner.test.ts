@@ -62,7 +62,7 @@ describe("ResourcePlanner", () => {
                         .withEnergy(0);
                 });
 
-                it.only("will request a creep with minimum body size", () => {
+                it("will request a creep with minimum body size", () => {
                     run();
 
                     const minPrice = _.sum([WORK, CARRY, MOVE], (part) => BODYPART_COST[part]);
@@ -118,7 +118,7 @@ describe("ResourcePlanner", () => {
                 _myCreeps = [miner, truck];
             });
 
-            it("will attempt to create biggest creep possible", () => {
+            it("will attempt to create biggest miner needed", () => {
                 run();
 
 
