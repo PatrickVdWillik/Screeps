@@ -48,6 +48,26 @@ export class SpawnBuilder extends AbstractBuilder<StructureSpawn> {
         return this;
     }
 
+    public withPos(x: number, y: number): SpawnBuilder {
+        this.mock
+            .setup(s => s.pos)
+            .returns(() => ({
+                x: x,
+                y: y,
+                roomName: "test",
+                getRangeTo(target: RoomPosition | { pos: RoomPosition }): number {
+                    if (target instanceof RoomPosition) {
+                        const dX = x - target.x;
+                        const dY = y - target.y;
+                        return Math.sqrt(dX * dX + dY * dY);
+                    } else {
+                        return this.getRangeTo(target.pos);
+                    }
+                }
+            }) as RoomPosition);
+        return this;
+    }
+
     public build(): StructureSpawn {
         this.mock
             .setup(s => s.energyCapacity)

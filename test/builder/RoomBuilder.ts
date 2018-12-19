@@ -11,6 +11,7 @@ export class RoomBuilder extends AbstractBuilder<Room> {
     private _spawns: StructureSpawn[] = [];
     private _myStructures: AnyOwnedStructure[] = [];
     private _resources: Resource[] = [];
+    private _sources: Source[] = [];
     private _myCreeps: Creep[] = [];
     private _name: string = "";
     private _energyCapacity: number = 300;
@@ -108,6 +109,12 @@ export class RoomBuilder extends AbstractBuilder<Room> {
         return this;
     }
 
+    public withSource(source: Source): RoomBuilder {
+        this._sources.push(source);
+
+        return this;
+    }
+
     private configureFindSpawns(): void {
         let spawns: StructureSpawn[] = [];
         if (_.any(this._spawnBuilders)) {
@@ -172,6 +179,18 @@ export class RoomBuilder extends AbstractBuilder<Room> {
             });
     }
 
+    private configureSources(): void {
+        this.mock
+            .setup(r => r.find(It.isValue(FIND_SOURCES), It.isAny()))
+            .returns((a, b) => {
+                if (b === undefined || b.filter === undefined) {
+                    return this._sources;
+                }
+
+                return _.filter(this._sources, b.filter);
+            })
+    }
+
     public build(): Room {
         this._name = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5);
         this.mock
@@ -190,6 +209,7 @@ export class RoomBuilder extends AbstractBuilder<Room> {
             .setup(r => r.energyCapacityAvailable)
             .returns(() => this._energyCapacity);
 
+        this.configureSources();
         this.configureFindSpawns();
         this.configureFindMyStructures();
         this.configureFindDroppedResource();

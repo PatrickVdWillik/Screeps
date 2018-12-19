@@ -3,11 +3,14 @@ import { ResourcePlanner } from "../../../src/planning/ResourcePlanner";
 import { ISpawnQueue, QueuePriority } from "../../../src/SpawnQueue";
 import { RoomBuilder } from "../../builder/RoomBuilder";
 import { CreepBuilder } from "../../builder/CreepBuilder";
+import { SpawnBuilder } from "../../builder/SpawnBuilder";
 
 describe("ResourcePlanner", () => {
     const SourceId: string = "source_1";
     let _myCreeps: Creep[];
+    let _source: Source;
     let _roomBuilder: RoomBuilder;
+    let _spawnBuilder: SpawnBuilder;
     let _buildQueue: IMock<ISpawnQueue>;
     let _memory: any;
 
@@ -23,17 +26,19 @@ describe("ResourcePlanner", () => {
             .create()
             .withMemory(_memory)
             .withEnergyCapacity(300)
-            .withEnergy(300);
+            .withEnergy(300)
 
         _buildQueue = Mock.ofType<ISpawnQueue>();
     });
 
     describe("in a rooom with a source", () => {
         beforeEach(() => {
-            let _source = Mock.ofType<Source>();
-            _source.setup(s => s.id).returns(() => SourceId);
-            _source.setup(s => s.energyCapacity).returns(() => SOURCE_ENERGY_CAPACITY);
-            _source.setup(s => s.energy).returns(() => SOURCE_ENERGY_CAPACITY);
+            let _sourceMock = Mock.ofType<Source>();
+            _sourceMock.setup(s => s.id).returns(() => SourceId);
+            _sourceMock.setup(s => s.energyCapacity).returns(() => SOURCE_ENERGY_CAPACITY);
+            _sourceMock.setup(s => s.energy).returns(() => SOURCE_ENERGY_CAPACITY);
+            _source = _sourceMock.object
+            _roomBuilder.withSource(_source);
         });
 
         describe("without miners and trucks", () => {
