@@ -26,19 +26,54 @@ describe("ResourcePlanner", () => {
             .create()
             .withMemory(_memory)
             .withEnergyCapacity(300)
-            .withEnergy(300)
+            .withEnergy(300);
 
         _buildQueue = Mock.ofType<ISpawnQueue>();
     });
 
-    describe("in a rooom with a source", () => {
+    describe("in an uninitialized state", () => {
+        
+        describe("with 2 sources in the room", () => {
+            let _source1: Source;
+            let _source2: Source;
+            let _spawn: Spawn;
+            
+            beforeEach(() => {
+                _source1 = SourceBuilder.create()
+                    .withEnergyCapacity(SOURCE_ENERGY_CAPACITY)
+                    .withEnergy(SOURCE_ENERGY_CAPACITY)
+                    .withId("source_1")
+                    .build();
+                    
+                _source2 = SourceBuilder.create()
+                    .withEnergyCapacity(SOURCE_ENERGY_CAPACITY)
+                    .withEnergy(SOURCE_ENERGY_CAPACITY)
+                    .withId("source_2")
+                    .build();
+                
+                const spawnBuilder = SpawnBuilder.create()
+                    .withEnergy(300)
+            });
+            
+            it("will initialize the room", () => {
+                
+            });
+        });
+    });
+    
+    describe("in a room with a source", () => {
         beforeEach(() => {
             let _sourceMock = Mock.ofType<Source>();
             _sourceMock.setup(s => s.id).returns(() => SourceId);
             _sourceMock.setup(s => s.energyCapacity).returns(() => SOURCE_ENERGY_CAPACITY);
             _sourceMock.setup(s => s.energy).returns(() => SOURCE_ENERGY_CAPACITY);
             _source = _sourceMock.object
+            
             _roomBuilder.withSource(_source);
+        });
+        
+        it("will initialize itself at first run", () => {
+            
         });
 
         describe("without miners and trucks", () => {
