@@ -1,5 +1,6 @@
 import * as TypeMoq from "typemoq";
 import { AbstractBuilder } from "./AbstractBuilder";
+import { RoomPosBuilder } from "./RoomPosBuilder";
 
 export class SpawnBuilder extends AbstractBuilder<StructureSpawn> {
     private constructor() {
@@ -24,6 +25,11 @@ export class SpawnBuilder extends AbstractBuilder<StructureSpawn> {
         return this;
     }
 
+    public withName(name: string): SpawnBuilder {
+        this.mock.setup(s => s.name).returns(() => name);
+
+        return this;
+    }
     public isSpawning(spawning: Spawning): SpawnBuilder {
         this.mock
             .setup(s => s.spawning)
@@ -51,20 +57,8 @@ export class SpawnBuilder extends AbstractBuilder<StructureSpawn> {
     public withPos(x: number, y: number): SpawnBuilder {
         this.mock
             .setup(s => s.pos)
-            .returns(() => ({
-                x: x,
-                y: y,
-                roomName: "test",
-                getRangeTo(target: RoomPosition | { pos: RoomPosition }): number {
-                    if (target instanceof RoomPosition) {
-                        const dX = x - target.x;
-                        const dY = y - target.y;
-                        return Math.sqrt(dX * dX + dY * dY);
-                    } else {
-                        return this.getRangeTo(target.pos);
-                    }
-                }
-            }) as RoomPosition);
+            .returns(() => RoomPosBuilder.create(x, y).build());
+
         return this;
     }
 
