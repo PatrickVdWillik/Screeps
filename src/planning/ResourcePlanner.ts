@@ -14,7 +14,7 @@ interface SpawnNeeds {
 }
 
 interface ResourcePlannerMemory {
-    sources: string[];
+    sources: { id: string, path: number }[];
     mainSpawn: string;
 }
 
@@ -52,11 +52,16 @@ export class ResourcePlanner {
         const spawnName = (<any>this._room.memory).mainSpawn;
         const spawn = Game.spawns[spawnName];
         let sources = this._room.find(FIND_SOURCES);
+        console.log(`Found sources: ${sources}`);
+        console.log(`Found spawn: ${spawn} (${spawnName})`);
         sources = _.sortBy(sources, s => spawn.pos.getRangeTo(s));
 
         this._memory = {
             mainSpawn: spawnName,
-            sources: sources.map(s => s.id)
+            sources: sources.map(s => ({
+                id: s.id,
+                path: PathFinder.search(spawn.pos, { pos: s.pos, range: 1 }).cost
+            }))
         };
 
         (<any>this._room.memory).resourcePlanner = this._memory;
@@ -75,7 +80,6 @@ export class ResourcePlanner {
         const queuedTrucks = this._buildQueue.getRequestCount("Truck");
 
         if (queuedMiners > 0 || queuedTrucks > 0) {
-            console.log(`Still waiting for spawn to complete`);
             return ({
                 role: SpawnRole.Nothing
             });
@@ -86,7 +90,7 @@ export class ResourcePlanner {
                 role: SpawnRole.Miner,
                 size: maxMinerWorkCount,
                 emergency: true,
-                target: this._memory.sources[0]
+                target: this._memory.sources[0].id
             });
         }
 
@@ -97,21 +101,34 @@ export class ResourcePlanner {
             });
         }
 
-        const minersBySourceId = _.groupBy(this._creeps["Miner"], c => (<any>c.memory).target);
-        const sources = this._memory.sources.map(id => Game.getObjectById<Source>(id)!);
+        const totalWork = _.sum(this._creeps["Miner"], c => _.sum(c.body, p => p.type === WORK ? 1 : 0));
+        const totalCarry = _.sum(this._creeps["Truck"], c => _.sum(c.body, p => p.type === CARRY ? 1 : 0));
+        const totalDistance = _.sum(this._memory.sources, s => s.path);
+        const totalProductionPerTick = totalWork * HARVEST_POWER;
+        const totalCarryPerTick = totalCarry * CARRY_CAPACITY / totalDistance;
+        const productionRate = (totalWork * HARVEST_POWER) / (this._memory.sources.length * maxMinerWorkCount * HARVEST_POWER);
 
-        for (var source of sources) {
-            let work = 0;
-            if (minersBySourceId[source.id]) {
-                work = _.sum(minersBySourceId[source.id], c => _.sum(c.body, p => p.type === WORK ? 1 : 0));
-            }
+        if (totalProductionPerTick > totalCarryPerTick) {
+            return ({
+                role: SpawnRole.Truck
+            });
+        } else if (productionRate < 1.0 && totalProductionPerTick < totalCarryPerTick) {
+            const minersBySourceId = _.groupBy(this._creeps["Miner"], c => (<any>c.memory).target);
+            const sources = this._memory.sources.map(src => Game.getObjectById<Source>(src.id)!);
 
-            if (work < maxMinerWorkCount) {
-                return ({
-                    role: SpawnRole.Miner,
-                    size: maxMinerWorkCount,
-                    target: source.id
-                });
+            for (var source of sources) {
+                let work = 0;
+                if (minersBySourceId[source.id]) {
+                    work = _.sum(minersBySourceId[source.id], c => _.sum(c.body, p => p.type === WORK ? 1 : 0));
+                }
+
+                if (work < maxMinerWorkCount) {
+                    return ({
+                        role: SpawnRole.Miner,
+                        size: maxMinerWorkCount,
+                        target: source.id
+                    });
+                }
             }
         }
 

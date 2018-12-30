@@ -1,4 +1,4 @@
-export class Truck {
+export class Truck implements IRunnable {
     constructor(private _creep: Creep) {
     }
 
@@ -21,10 +21,12 @@ export class Truck {
 
     private startLoading(): void {
         (<any>this._creep.memory).task = "loading";
+        (<any>this._creep.memory).target = undefined;
     }
 
     private startDelivery(): void {
         (<any>this._creep.memory).task = "delivering";
+        (<any>this._creep.memory).target = undefined;
     }
 
     private runLoading(): void {
@@ -47,6 +49,8 @@ export class Truck {
         } else if (result === ERR_NOT_IN_RANGE) {
             this._creep.moveTo(resource);
             (<any>this._creep.memory).target = resource.id;
+        } else if (result === ERR_FULL) {
+            this.startDelivery();
         } else {
             console.log(`Error picking up resource: ${result}. Resource was ${resource.id} (undefined: ${resource === undefined})`);
         }
@@ -71,10 +75,18 @@ export class Truck {
     }
 
     private runDelivering(): void {
+        if (_.sum(this._creep.carry) === 0) {
+            this.startLoading();
+        }
         const spawn = this.getDeliveryTarget();
         if (!spawn) return;
 
-        const result = this._creep.transfer(spawn!, RESOURCE_ENERGY, this._creep.carry[RESOURCE_ENERGY]);
+        const amount = this.determineTransferAmount(spawn! as StructureSpawn);
+        if (amount === 0) {
+            (<any>this._creep.memory).target = undefined;
+        }
+
+        const result = this._creep.transfer(spawn!, RESOURCE_ENERGY, amount);
         if (result === OK) {
             (<any>this._creep.memory).target = undefined;
         } else if (result === ERR_NOT_IN_RANGE) {
@@ -83,6 +95,13 @@ export class Truck {
         } else {
             console.log(`Transfer result is ${result}`);
         }
+    }
+
+    private determineTransferAmount(target: StructureSpawn | StructureExtension): number {
+        const availableEnergy = this._creep.carry[RESOURCE_ENERGY];
+        const availableStorage = target.energyCapacity - target.energy;
+
+        return Math.min(availableEnergy, availableStorage);
     }
 
     private getDeliveryTarget(): Structure | null {

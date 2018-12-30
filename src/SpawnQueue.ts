@@ -10,7 +10,6 @@ export interface SpawnRequest {
     priority: QueuePriority;
     details: SpawnDetails;
     body?: BodyPartConstant[];
-    memory?: any;
 }
 
 export interface SpawnDetails {
@@ -31,24 +30,36 @@ export interface ISpawnQueue {
 }
 
 export class SpawnQueue implements ISpawnQueue {
+    public constructor(private _memory: SpawnRequest[]) {
+    }
 
     public get length(): number {
-        return 0;
+        return this._memory.length;
     }
 
     public peek(): SpawnRequest | null {
-        throw new Error("Method not implemented.");
+        if (this._memory.length > 0) {
+            return this._memory[0];
+        }
+
+        return null;
     }
 
     public completeRequest(): void {
-        throw new Error("Method not implemented.");
+        this._memory.splice(0, 1);
     }
 
-    public push(role: string, details: SpawnDetails, priority: QueuePriority): void {
-        throw new Error("Method not implemented.");
+    public push(role: string, details: SpawnDetails, priority: QueuePriority, memory?: any): void {
+        this._memory.push({
+            role: role,
+            priority: priority,
+            details: details
+        });
+
+        this._memory = _.sortBy(this._memory, r => r.priority);
     }
 
     public getRequestCount(role: string): number {
-        throw new Error("Method not implemented.");
+        return _.filter(this._memory, r => r.role === role).length;
     }
 }

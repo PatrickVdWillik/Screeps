@@ -64,7 +64,7 @@ describe("ResourcePlanner", () => {
             const expectedMainSpawn = "Spawn1";
             const Source1Id = "source_1";
             const Source2Id = "source_2";
-            const expectedSourceIds = [{ id: Source1Id, path: 30 }, { id: Source2Id, path: 20 }];
+            const expectedSourceIds = [{ id: Source2Id, path: 20 }, { id: Source1Id, path: 30 }];
 
             beforeEach(() => {
                 _source1 = SourceBuilder.create()
@@ -88,10 +88,17 @@ describe("ResourcePlanner", () => {
                 Game.objects[_source1.id] = _source1;
                 Game.objects[_source2.id] = _source2;
 
-                _pathFinderMock.setup(pf => pf.search(It.isValue(_spawn.pos), { pos: _source1.pos, range: 1 }, It.isAny()))
-                    .returns(() => ({ path: [], ops: 666, cost: 30, incomplete: false }));
-                _pathFinderMock.setup(pf => pf.search(It.isValue(_spawn.pos), { pos: _source2.pos, range: 1 }, It.isAny()))
-                    .returns(() => ({ path: [], ops: 666, cost: 20, incomplete: false }));
+                let value: number = 0;
+                _pathFinderMock.setup(pf => pf.search(It.isAny(), It.isAny(), It.isAny()))
+                    .callback((src: RoomPosition, goal, opts) => {
+                        if (goal.pos.x === _source1.pos.x && goal.pos.y === _source1.pos.y) {
+                            value = 30;
+                            return;
+                        }
+
+                        value = 20;
+                    })
+                    .returns((v) => { return { path: [], ops: 866, cost: value, incomplete: false } });
 
                 _memory.mainSpawn = expectedMainSpawn;
                 _buildQueue.setup(q => q.getRequestCount(It.isAnyString())).returns(() => 2);
@@ -125,7 +132,7 @@ describe("ResourcePlanner", () => {
                 mainSpawn: "Spawn1",
                 resourcePlanner: {
                     mainSpawn: "Spawn1",
-                    sources: [SourceId]
+                    sources: [{ id: SourceId, path: 20 }]
                 }
             });
         });
@@ -205,6 +212,66 @@ describe("ResourcePlanner", () => {
             });
         });
 
+        describe("with a positive transport value and not enough miners for the source", () => {
+            beforeEach(() => {
+                const truck = CreepBuilder
+                    .create()
+                    .withMemory({ role: "Truck" })
+                    .withName("Truck123")
+                    .withBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE])
+                    .withCarryCapacity(200)
+                    .build();
+
+                const miner = CreepBuilder
+                    .create()
+                    .withMemory({ role: "Miner" })
+                    .withBody([WORK, WORK, CARRY, MOVE])
+                    .withName("Miner123")
+                    .build();
+
+                _roomBuilder.withMyCreeps([truck, miner]);
+
+                _buildQueue.setup(q => q.getRequestCount(It.isValue("Truck"))).returns(() => 0);
+                _buildQueue.setup(q => q.getRequestCount(It.isValue("Miner"))).returns(() => 0);
+            });
+
+            it("will spawn a miner", () => {
+                run();
+
+                _buildQueue.verify(q => q.push(It.isValue("Miner"), It.isAny(), It.isAny()), Times.once());
+            });
+        });
+
+        describe("with a positive production value", () => {
+            beforeEach(() => {
+                const truck = CreepBuilder
+                    .create()
+                    .withMemory({ role: "Truck" })
+                    .withName("Truck123")
+                    .withBody([CARRY, MOVE, MOVE, MOVE, MOVE])
+                    .withCarryCapacity(200)
+                    .build();
+
+                const miner = CreepBuilder
+                    .create()
+                    .withMemory({ role: "Miner" })
+                    .withBody([WORK, WORK, WORK, WORK, CARRY, MOVE])
+                    .withName("Miner123")
+                    .build();
+
+                _roomBuilder.withMyCreeps([truck, miner]);
+
+                _buildQueue.setup(q => q.getRequestCount(It.isValue("Truck"))).returns(() => 0);
+                _buildQueue.setup(q => q.getRequestCount(It.isValue("Miner"))).returns(() => 0);
+            });
+
+            it("will spawn a truck", () => {
+                run();
+
+                _buildQueue.verify(q => q.push(It.isValue("Truck"), It.isAny(), It.isAny()), Times.once());
+            });
+        });
+
         describe("with a miner and truck and an extra source", () => {
             const _energyAvailable = 1200;
             let _source2: Source;
@@ -218,7 +285,7 @@ describe("ResourcePlanner", () => {
                     .withEnergyCapacity(3000)
                     .build();
                 Game.addObject(_source2);
-                _memory.resourcePlanner.sources.push(Source2Id);
+                _memory.resourcePlanner.sources.push({ id: Source2Id, path: 30 });
 
                 _roomBuilder
                     .withEnergyCapacity(_energyAvailable)
@@ -235,7 +302,7 @@ describe("ResourcePlanner", () => {
                 const truck = CreepBuilder
                     .create()
                     .withName("Truck2")
-                    .withBody([MOVE, CARRY, MOVE, CARRY])
+                    .withBody([MOVE, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, CARRY])
                     .withMemory({ role: "Truck" })
                     .build();
 
@@ -248,7 +315,7 @@ describe("ResourcePlanner", () => {
                     _buildQueue.setup(q => q.getRequestCount(It.isValue("Miner"))).returns(() => 0);
                 });
 
-                it.only("will attempt to create biggest miner possible for other source", () => {
+                it("will attempt to create biggest miner possible for other source", () => {
                     run();
 
                     _buildQueue.verify(q => q.push(It.isValue("Miner"), It.isObjectWith({ maxCost: _energyAvailable, work: 6, memory: { target: Source2Id } }), It.isValue(QueuePriority.Normal)), Times.once());

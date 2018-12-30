@@ -23,3 +23,7 @@ declare namespace NodeJS {
     log: any;
   }
 }
+
+interface IRunnable {
+  run(): void;
+}
