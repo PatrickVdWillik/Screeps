@@ -1,5 +1,3 @@
-// example declaration file - remove these and add your own custom typings
-
 // memory extension samples
 interface CreepMemory {
   role: string;
@@ -20,6 +18,7 @@ interface Memory {
 // `global` extension samples
 declare namespace NodeJS {
   interface Global {
+    census: Record<string, Creep[]>;
     log: any;
   }
 }

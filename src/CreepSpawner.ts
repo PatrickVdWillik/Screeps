@@ -23,7 +23,7 @@ export class CreepSpawner {
 
         const name = this._creepBuilder.createName(request);
         const memory = request.details.memory || {};
-        _.extend(memory, <any>{ role: request.role });
+        _.extend(memory, <any>{ role: request.role, room: this._room.name });
 
         const result = spawn.spawnCreep(body!, name, { memory: memory as CreepMemory });
         if (result === OK) {

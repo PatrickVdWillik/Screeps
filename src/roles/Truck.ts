@@ -1,9 +1,18 @@
+interface TruckMemory extends CreepMemory {
+    target?: string;
+    task: string;
+}
+
 export class Truck implements IRunnable {
     constructor(private _creep: Creep) {
     }
 
+    private get memory(): TruckMemory {
+        return this._creep.memory as TruckMemory;
+    }
+
     public run(): void {
-        if ((<any>this._creep.memory).task === undefined) {
+        if (this.memory.task === undefined) {
             if (_.sum(this._creep.carry) >= this._creep.carryCapacity) {
                 this.startDelivery();
             } else {
@@ -11,7 +20,7 @@ export class Truck implements IRunnable {
             }
         }
 
-        const currentTask = (<any>this._creep.memory).task;
+        const currentTask = this.memory.task;
         if (currentTask === "loading") {
             this.runLoading();
         } else if (currentTask === "delivering") {
@@ -20,13 +29,13 @@ export class Truck implements IRunnable {
     }
 
     private startLoading(): void {
-        (<any>this._creep.memory).task = "loading";
-        (<any>this._creep.memory).target = undefined;
+        this.memory.task = "loading";
+        this.memory.target = undefined;
     }
 
     private startDelivery(): void {
-        (<any>this._creep.memory).task = "delivering";
-        (<any>this._creep.memory).target = undefined;
+        this.memory.task = "delivering";
+        this.memory.target = undefined;
     }
 
     private runLoading(): void {
@@ -48,7 +57,7 @@ export class Truck implements IRunnable {
             }
         } else if (result === ERR_NOT_IN_RANGE) {
             this._creep.moveTo(resource);
-            (<any>this._creep.memory).target = resource.id;
+            this.memory.target = resource.id;
         } else if (result === ERR_FULL) {
             this.startDelivery();
         } else {
@@ -57,13 +66,13 @@ export class Truck implements IRunnable {
     }
 
     private getResource(): Resource | null {
-        if ((<any>this._creep.memory).target) {
-            const obj = Game.getObjectById<Resource>((<any>this._creep.memory).target)!;
+        if (this.memory.target) {
+            const obj = Game.getObjectById<Resource>(this.memory.target)!;
             if (obj) {
                 return obj;
             }
 
-            (<any>this._creep.memory).target = undefined;
+            this.memory.target = undefined;
         }
 
         const resources: Resource[] = this._creep.room.find(FIND_DROPPED_RESOURCES);
@@ -75,22 +84,27 @@ export class Truck implements IRunnable {
     }
 
     private runDelivering(): void {
-        if (_.sum(this._creep.carry) === 0) {
+        const totalCarry = _.sum(this._creep.carry);
+        if (totalCarry === 0) {
             this.startLoading();
         }
+
         const spawn = this.getDeliveryTarget();
         if (!spawn) return;
 
         const amount = this.determineTransferAmount(spawn! as StructureSpawn);
         if (amount === 0) {
-            (<any>this._creep.memory).target = undefined;
+            this.memory.target = undefined;
         }
 
         const result = this._creep.transfer(spawn!, RESOURCE_ENERGY, amount);
         if (result === OK) {
-            (<any>this._creep.memory).target = undefined;
+            this.memory.target = undefined;
+            if (totalCarry - amount <= 0) {
+                this.startLoading();
+            }
         } else if (result === ERR_NOT_IN_RANGE) {
-            (<any>this._creep.memory).target = spawn.id;
+            this.memory.target = spawn.id;
             this._creep.moveTo(spawn);
         } else {
             console.log(`Transfer result is ${result}`);
@@ -105,11 +119,11 @@ export class Truck implements IRunnable {
     }
 
     private getDeliveryTarget(): Structure | null {
-        if ((<any>this._creep.memory).target) {
-            const target = Game.getObjectById<Structure>((<any>this._creep.memory).target);
+        if (this.memory.target) {
+            const target = Game.getObjectById<Structure>(this.memory.target);
             if (target) { return target; }
 
-            (<any>this._creep.memory).target = undefined;
+            this.memory.target = undefined;
         }
 
         const spawns = this._creep.room.find(FIND_MY_STRUCTURES, {

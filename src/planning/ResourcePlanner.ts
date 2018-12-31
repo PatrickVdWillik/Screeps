@@ -1,4 +1,5 @@
 import { ISpawnQueue, QueuePriority } from "../SpawnQueue";
+import { IColony } from "Colony";
 
 enum SpawnRole {
     Nothing,
@@ -13,18 +14,16 @@ interface SpawnNeeds {
     readonly emergency?: boolean;
 }
 
-interface ResourcePlannerMemory {
+export interface ResourcePlannerMemory {
     sources: { id: string, path: number }[];
-    mainSpawn: string;
 }
 
 export class ResourcePlanner {
     private _creeps: Record<string, Creep[]>;
     private _hasMiner: boolean;
     private _hasTruck: boolean;
-    private _memory: ResourcePlannerMemory;
 
-    public constructor(private _room: Room, private _buildQueue: ISpawnQueue) {
+    public constructor(private _colony: IColony, private _buildQueue: ISpawnQueue, private _memory: ResourcePlannerMemory) {
     }
 
     public run(): void {
@@ -44,35 +43,31 @@ export class ResourcePlanner {
     }
 
     private init(): void {
-        if ((<any>this._room.memory).resourcePlanner) {
-            this._memory = (<any>this._room.memory).resourcePlanner;
+        if (this._memory.sources) {
             return;
         }
 
-        const spawnName = (<any>this._room.memory).mainSpawn;
-        const spawn = Game.spawns[spawnName];
-        let sources = this._room.find(FIND_SOURCES);
+        const spawn = this._colony.mainSpawn!;
+        let sources = this._colony.mainRoom.find(FIND_SOURCES);
         console.log(`Found sources: ${sources}`);
-        console.log(`Found spawn: ${spawn} (${spawnName})`);
+        console.log(`Found spawn: ${spawn} (${spawn.name})`);
         sources = _.sortBy(sources, s => spawn.pos.getRangeTo(s));
 
-        this._memory = {
-            mainSpawn: spawnName,
+        _.extend(this._memory, {
             sources: sources.map(s => ({
                 id: s.id,
                 path: PathFinder.search(spawn.pos, { pos: s.pos, range: 1 }).cost
             }))
-        };
-
-        (<any>this._room.memory).resourcePlanner = this._memory;
+        });
     }
 
     private whichRoleShouldBeSpawned(): SpawnNeeds {
         const maxMinerWorkCount: number = (SOURCE_ENERGY_CAPACITY / HARVEST_POWER / ENERGY_REGEN_TIME) + 1;
 
-        this._creeps = _.groupBy(this._room.find(FIND_MY_CREEPS, {
-            filter: c => ((<any>c.memory).role === "Miner" || (<any>c.memory).role === "Truck")
-        }), (c: Creep) => (<any>c.memory).role);
+        this._creeps = {
+            "Miner": global.census[`${this._colony.name}_Miner`] || [],
+            "Truck": global.census[`${this._colony.name}_Truck`] || []
+        }
 
         this._hasMiner = _.any(this._creeps["Miner"]);
         this._hasTruck = _.any(this._creeps["Truck"]);
@@ -84,6 +79,8 @@ export class ResourcePlanner {
                 role: SpawnRole.Nothing
             });
         }
+
+        //console.log(`Has miner: ${this._hasMiner}, has truck: ${this._hasTruck}, nothing in build queue`);
 
         if (!this._hasMiner) {
             return ({
@@ -108,6 +105,7 @@ export class ResourcePlanner {
         const totalCarryPerTick = totalCarry * CARRY_CAPACITY / totalDistance;
         const productionRate = (totalWork * HARVEST_POWER) / (this._memory.sources.length * maxMinerWorkCount * HARVEST_POWER);
 
+        //console.log(`Production rate: ${totalProductionPerTick}, total transport: ${totalCarryPerTick}`);
         if (totalProductionPerTick > totalCarryPerTick) {
             return ({
                 role: SpawnRole.Truck
@@ -143,9 +141,9 @@ export class ResourcePlanner {
         let maxCost = 0;
 
         if (need.emergency) {
-            maxCost = Math.max(minCost, this._room.energyAvailable);
+            maxCost = Math.max(minCost, this._colony.mainRoom.energyAvailable);
         } else {
-            maxCost = this._room.energyCapacityAvailable;
+            maxCost = this._colony.mainRoom.energyCapacityAvailable;
         }
 
         const memory: any = {};
@@ -159,9 +157,9 @@ export class ResourcePlanner {
     private spawnTruck(need: SpawnNeeds): boolean {
         let maxCost = 0;
         if (need.emergency) {
-            maxCost = Math.max(100, this._room.energyAvailable);
+            maxCost = Math.max(100, this._colony.mainRoom.energyAvailable);
         } else {
-            maxCost = this._room.energyCapacityAvailable;
+            maxCost = this._colony.mainRoom.energyCapacityAvailable;
         }
 
         this._buildQueue.push("Truck", { maxCost: maxCost }, QueuePriority.Critical);

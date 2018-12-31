@@ -12,6 +12,8 @@ export interface SpawnRequest {
     body?: BodyPartConstant[];
 }
 
+export type SpawnQueueMemory = SpawnRequest[];
+
 export interface SpawnDetails {
     maxCost: number;
     memory?: any;

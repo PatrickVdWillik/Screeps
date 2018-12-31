@@ -1,21 +1,22 @@
 import { ErrorMapper } from "./utils/ErrorMapper";
-import { CreepSpawner } from "CreepSpawner";
-import { SpawnQueue } from "SpawnQueue";
-import { CreepBuilder } from "CreepBuilder";
-import { ResourcePlanner } from "planning/ResourcePlanner";
+
 import { RoleFactory } from "roles/RoleFactory";
+import { Colony } from "Colony";
 
 export const loop = ErrorMapper.wrapLoop(() => {
-  if (Memory.spawnQueue === undefined) {
-    Memory.spawnQueue = {};
+  if (Memory.colonies === undefined) {
+    initialize();
   }
 
   // Automatically delete memory of missing creeps
+  // TODO: Merge this with the creation of the census
   for (const name in Memory.creeps) {
     if (!(name in Game.creeps)) {
       delete Memory.creeps[name];
     }
   }
+
+  buildCensus();
 
   for (const creepName in Game.creeps) {
     const creep = Game.creeps[creepName];
@@ -25,28 +26,52 @@ export const loop = ErrorMapper.wrapLoop(() => {
     role.run();
   }
 
-  for (const roomName in Game.rooms) {
-    const room = Game.rooms[roomName];
-
-    if (Memory.spawnQueue[roomName] === undefined) {
-      Memory.spawnQueue[roomName] = [];
-    }
-
-    if (!(<any>room.memory).mainSpawn) {
-      const spawns = room.find(FIND_MY_SPAWNS);
-      const spawn = spawns[0];
-      if (spawn) {
-        (<any>room.memory).mainSpawn = spawn.name;
-      }
-    }
-
-    const spawnQueue = new SpawnQueue(Memory.spawnQueue[roomName]);
-    const bodyBuilder = new CreepBuilder();
-    const creepSpawner = new CreepSpawner(room, spawnQueue, bodyBuilder);
-    const resourcePlanner = new ResourcePlanner(room, spawnQueue);
-
-    creepSpawner.run();
-    resourcePlanner.run();
+  for (const colonyName in Memory.colonies) {
+    const colony = new Colony(colonyName);
+    colony.run();
   }
 
 });
+
+function initialize(): void {
+  console.log(`Initializing colonies...`);
+  Memory.colonies = {};
+
+  for (const name in Game.rooms) {
+    const room = Game.rooms[name];
+    if (room.find(FIND_MY_SPAWNS).length > 0) {
+      const colony = new Colony(name);
+      colony.run();
+    }
+  }
+}
+
+function buildCensus(): void {
+  const census: Record<string, Creep[]> = {};
+
+  for (const name in Game.creeps) {
+    if (!(name in Game.creeps)) {
+      // TODO: Implement a proper death routine
+      continue;
+    }
+
+    const creep = Game.creeps[name];
+    const key = `${creep.room.name}_${creep.memory.role}`;
+    const room = creep.room.name;
+
+    if (!census[key]) {
+      census[key] = [creep];
+    } else {
+      census[key].push(creep);
+    }
+
+    if (!census[room]) {
+      census[room] = [creep];
+    } else {
+      census[room].push(creep);
+    }
+  }
+
+  // @ts-ignore
+  global.census = census;
+}
