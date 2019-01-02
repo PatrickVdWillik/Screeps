@@ -1,10 +1,14 @@
+import { ResourceJobPlanner, Job } from "planning/ResourceJobPlanner";
+
 interface TruckMemory extends CreepMemory {
     target?: string;
-    task: string;
+    job: Job;
 }
 
 export class Truck implements IRunnable {
+    private _jobPlanner: ResourceJobPlanner;
     constructor(private _creep: Creep) {
+        this._jobPlanner = new ResourceJobPlanner(_creep.room);
     }
 
     private get memory(): TruckMemory {
