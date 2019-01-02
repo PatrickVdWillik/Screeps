@@ -2,6 +2,7 @@ import { CreepSpawner } from "CreepSpawner";
 import { SpawnQueue, SpawnQueueMemory } from "SpawnQueue";
 import { CreepBuilder } from "CreepBuilder";
 import { ResourcePlanner, ResourcePlannerMemory } from "planning/ResourcePlanner";
+import { BaseBuilder, HatchlingBuilder } from "baseBuilding/HatchingBuilder";
 
 interface ColonyMemory {
     state: ColonyState;
@@ -31,6 +32,7 @@ export class Colony implements IColony {
 
     private _creepSpawner: CreepSpawner;
     private _resourcePlanner: ResourcePlanner;
+    private _baseBuilder: BaseBuilder;
 
     public constructor(private _roomName: string) {
         let firstRun = false;
@@ -55,6 +57,7 @@ export class Colony implements IColony {
         this.init();
 
         this._resourcePlanner.run();
+        this._baseBuilder.run();
 
         // Spawner should run last, otherwise spawn requests will be removed from the queue but the creep won't exist yet in the census.
         this._creepSpawner.run();
@@ -86,6 +89,7 @@ export class Colony implements IColony {
         const bodyBuilder = new CreepBuilder();
         this._creepSpawner = new CreepSpawner(this._mainRoom, spawnQueue, bodyBuilder);
         this._resourcePlanner = new ResourcePlanner(this, spawnQueue, this._memory.resourcePlanner);
+        this._baseBuilder = new HatchlingBuilder(this);
     }
 
     public get name(): string {
