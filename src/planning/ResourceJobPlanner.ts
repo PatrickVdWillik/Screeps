@@ -2,7 +2,7 @@ export interface Job {
     type: string;
 }
 
-enum JobType {
+export enum TruckJobType {
     PickupResource = "pickupresource",
     DeliverResource = "deliverresource"
 }
@@ -14,7 +14,7 @@ export enum PickupType {
 }
 
 export class PickupResourceJob implements Job {
-    readonly type: string = JobType.PickupResource;
+    readonly type: string = TruckJobType.PickupResource;
 
     readonly target: string;
     readonly resourceType: ResourceConstant;
@@ -24,7 +24,7 @@ export class PickupResourceJob implements Job {
 }
 
 export class DeliverResourceJob implements Job {
-    readonly type: string = JobType.DeliverResource;
+    readonly type: string = TruckJobType.DeliverResource;
 
     readonly target: string;
     readonly amount?: number;
@@ -72,7 +72,7 @@ export class ResourceJobPlanner {
         if (!_.isEmpty(drops)) {
             console.log(`There are drops in the room, creep will service ${drops[0]}`);
             const job: PickupResourceJob = {
-                type: JobType.PickupResource,
+                type: TruckJobType.PickupResource,
                 resourceType: drops[0].resourceType,
                 pickupFrom: PickupType.Resource,
                 target: drops[0].id
@@ -89,7 +89,7 @@ export class ResourceJobPlanner {
         if (!_.isEmpty(tombstones)) {
             console.log(`There are tombstones in the room, creep will service ${tombstones[0]}`);
             const job: PickupResourceJob = {
-                type: JobType.PickupResource,
+                type: TruckJobType.PickupResource,
                 pickupFrom: PickupType.Tombstone,
                 target: tombstones[0].id,
                 resourceType: _.keys(tombstones[0].store)[0] as ResourceConstant
@@ -113,7 +113,7 @@ export class ResourceJobPlanner {
             const container = _.first(containers);
             const resourceType = RESOURCE_ENERGY;
             const job: PickupResourceJob = {
-                type: JobType.PickupResource,
+                type: TruckJobType.PickupResource,
                 pickupFrom: PickupType.Structure,
                 target: container.id,
                 resourceType: resourceType
