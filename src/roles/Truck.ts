@@ -1,10 +1,19 @@
+import { TruckJobPlanner, TruckJobType, PickupType, Job, PickupResourceJob, DeliverResourceJob } from "planning/TruckJobPlanner";
+
 interface TruckMemory extends CreepMemory {
     target?: string;
-    task: string;
+    job: Job | null;
 }
 
 export class Truck implements IRunnable {
+    private _jobPlanner: TruckJobPlanner;
+
     constructor(private _creep: Creep) {
+        if (_creep.room === undefined) {
+            throw new Error(`Creep ${_creep.name} doesn't have a room`);
+        }
+
+        this._jobPlanner = new TruckJobPlanner(_creep.room);
     }
 
     private get memory(): TruckMemory {
@@ -12,102 +21,79 @@ export class Truck implements IRunnable {
     }
 
     public run(): void {
-        if (this.memory.task === undefined) {
-            if (_.sum(this._creep.carry) >= this._creep.carryCapacity) {
-                this.startDelivery();
-            } else {
-                this.startLoading();
-            }
+        if (!this.memory.job) {
+            if (!this.findNewJob()) return;
         }
 
-        const currentTask = this.memory.task;
-        if (currentTask === "loading") {
-            this.runLoading();
-        } else if (currentTask === "delivering") {
-            this.runDelivering();
+        const job = this.memory.job!;
+        if (job.type === TruckJobType.PickupResource) {
+            this.load();
+        } else if (job.type === TruckJobType.DeliverResource) {
+            this.deliver();
         }
     }
 
-    private startLoading(): void {
-        this.memory.task = "loading";
-        this.memory.target = undefined;
+    private findNewJob(): boolean {
+        const job = this._jobPlanner.findJob(this._creep, this.memory.job!);
+        if (job) {
+            this.memory.job = job;
+        }
+
+        return job !== null;
     }
 
-    private startDelivery(): void {
-        this.memory.task = "delivering";
-        this.memory.target = undefined;
+    private get currentJob(): Job | null {
+        return this.memory.job || null;
     }
 
-    private runLoading(): void {
-        const resource = this.getResource();
-        if (!resource) {
-            const currentCarry = _.sum(this._creep.carry);
-            if (currentCarry > 0) {
-                this.startDelivery();
-            }
-
+    private load(): void {
+        const job = this.currentJob as PickupResourceJob;
+        const target = Game.getObjectById(job.target);
+        if (!target) {
+            this.failJob();
             return;
         }
 
-        const result = this._creep.pickup(resource);
-        if (result === OK) {
-            const totalCarry = _.sum(this._creep.carry);
-            if (totalCarry + resource.amount >= this._creep.carryCapacity) {
-                this.startDelivery();
-            }
-        } else if (result === ERR_NOT_IN_RANGE) {
-            this._creep.moveTo(resource);
-            this.memory.target = resource.id;
-        } else if (result === ERR_FULL) {
-            this.startDelivery();
+        let result: ScreepsReturnCode;
+        switch (job.pickupFrom) {
+            case PickupType.Resource:
+                result = this._creep.pickup(target as Resource);
+                break;
+            case PickupType.Tombstone:
+                result = this._creep.withdraw(target as Tombstone, job.resourceType);
+                break;
+            case PickupType.Structure:
+                result = this._creep.withdraw(target as Structure, job.resourceType);
+                break;
+            default:
+                result = ERR_INVALID_ARGS;
+        }
+
+        if (result === ERR_NOT_IN_RANGE) {
+            this._creep.moveTo(target as { pos: RoomPosition });
+        } else if (result === OK || result === ERR_FULL) {
+            this.completeJob();
         } else {
-            console.log(`Error picking up resource: ${result}. Resource was ${resource.id} (undefined: ${resource === undefined})`);
+            console.log(`${this._creep.name}: Error (${result}) collecting resource from ${target}. Job descriptor: ${JSON.stringify(job)}`);
+            // TODO: Should cancel job?
         }
     }
 
-    private getResource(): Resource | null {
-        if (this.memory.target) {
-            const obj = Game.getObjectById<Resource>(this.memory.target)!;
-            if (obj) {
-                return obj;
-            }
-
-            this.memory.target = undefined;
+    private deliver(): void {
+        const job = this.memory.job as DeliverResourceJob;
+        const target = Game.getObjectById(job.target);
+        if (!target) {
+            console.log(`Cannot find deliver target for job: ${JSON.stringify(job)}`);
+            this.failJob();
+            return;
         }
 
-        const resources: Resource[] = this._creep.room.find(FIND_DROPPED_RESOURCES);
-        if (_.any(resources)) {
-            return resources[0];
-        }
-
-        return null;
-    }
-
-    private runDelivering(): void {
-        const totalCarry = _.sum(this._creep.carry);
-        if (totalCarry === 0) {
-            this.startLoading();
-        }
-
-        const spawn = this.getDeliveryTarget();
-        if (!spawn) return;
-
-        const amount = this.determineTransferAmount(spawn! as StructureSpawn);
-        if (amount === 0) {
-            this.memory.target = undefined;
-        }
-
-        const result = this._creep.transfer(spawn!, RESOURCE_ENERGY, amount);
-        if (result === OK) {
-            this.memory.target = undefined;
-            if (totalCarry - amount <= 0) {
-                this.startLoading();
-            }
-        } else if (result === ERR_NOT_IN_RANGE) {
-            this.memory.target = spawn.id;
-            this._creep.moveTo(spawn);
-        } else {
-            console.log(`Transfer result is ${result}`);
+        let amount = job.amount || this.determineTransferAmount(target as StructureSpawn);
+        const result = this._creep.transfer(target as Structure, job.resourceType, amount);
+        if (result === ERR_NOT_IN_RANGE) {
+            this._creep.moveTo(target as Structure);
+        } else if (result === OK) {
+            this.completeJob();
         }
     }
 
@@ -118,20 +104,11 @@ export class Truck implements IRunnable {
         return Math.min(availableEnergy, availableStorage);
     }
 
-    private getDeliveryTarget(): Structure | null {
-        if (this.memory.target) {
-            const target = Game.getObjectById<Structure>(this.memory.target);
-            if (target) { return target; }
+    private completeJob(): void {
+        this.memory.job = this._jobPlanner.completeJob(this._creep, this.memory.job!);
+    }
 
-            this.memory.target = undefined;
-        }
-
-        const spawns = this._creep.room.find(FIND_MY_STRUCTURES, {
-            filter: (s: StructureSpawn | StructureExtension) => s.energy < s.energyCapacity
-        });
-
-        if (!_.any(spawns)) return null;
-
-        return spawns[0];
+    private failJob(): void {
+        this.memory.job = this._jobPlanner.failJob(this._creep, this.memory.job!);
     }
 }

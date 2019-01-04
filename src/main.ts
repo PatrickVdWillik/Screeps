@@ -22,8 +22,13 @@ export const loop = ErrorMapper.wrapLoop(() => {
     const creep = Game.creeps[creepName];
     if (creep.spawning) continue;
 
-    const role = RoleFactory.create(creep);
-    role.run();
+    try {
+      const role = RoleFactory.create(creep);
+      role.run();
+    } catch (err) {
+      console.log(`Error executing ${creep.name} role. ${err.message}`);
+      console.log(err.stack);
+    }
   }
 
   for (const colonyName in Memory.colonies) {
@@ -32,6 +37,22 @@ export const loop = ErrorMapper.wrapLoop(() => {
   }
 
 });
+
+// @ts-ignore
+// global.lastMemoryTick = undefined;
+
+// function tryInitSameMemory() {
+//   if (lastMemoryTick && global.LastMemory && Game.time == (lastMemoryTick + 1)) {
+//     delete global.Memory
+//     global.Memory = global.LastMemory
+//     RawMemory._parsed = global.LastMemory
+//   } else {
+//     Memory;
+//     global.LastMemory = RawMemory._parsed
+//   }
+
+//   lastMemoryTick = Game.time
+// }
 
 function initialize(): void {
   console.log(`Initializing colonies...`);
