@@ -1,12 +1,7 @@
 import { IColony } from "Colony";
+import { IBaseBuilder } from "./IBaseBuilder";
 
-export interface BaseBuilder {
-    run(): void;
-
-    readonly isComplete: boolean;
-}
-
-export class HatchlingBuilder implements BaseBuilder {
+export class HatchlingBuilder implements IBaseBuilder {
     public constructor(private _colony: IColony) {
     }
 
@@ -23,7 +18,6 @@ export class HatchlingBuilder implements BaseBuilder {
             });
 
             if (!_.isEmpty(containers)) {
-                // console.log(`${source} has a container`);
                 continue;
             }
 
@@ -32,7 +26,6 @@ export class HatchlingBuilder implements BaseBuilder {
             });
 
             if (!_.isEmpty(constructionSites)) {
-                // console.log(`${source} has a construction site at ${constructionSites[0]}`);
                 continue;
             }
 

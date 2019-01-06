@@ -1,10 +1,11 @@
 import { CreepSpawner } from "CreepSpawner";
-import { SpawnQueue, SpawnQueueMemory } from "SpawnQueue";
-import { CreepBuilder } from "CreepBuilder";
+import { SpawnQueueMemory } from "SpawnQueue";
 import { ResourcePlanner, ResourcePlannerMemory } from "planning/ResourcePlanner";
-import { BaseBuilder, HatchlingBuilder } from "baseBuilding/HatchingBuilder";
+import { IBaseBuilder } from "baseBuilding/IBaseBuilder";
+import { ColonyFactory } from "ColonyFactory";
+import { IProgressor } from "progression/IProgressor";
 
-interface ColonyMemory {
+export interface ColonyMemory {
     state: ColonyState;
     room: string;
     mainSpawn: string;
@@ -12,7 +13,7 @@ interface ColonyMemory {
     spawnQueue: SpawnQueueMemory;
 }
 
-enum ColonyState {
+export enum ColonyState {
     Hatchling,
     Larva,
     Pupa,
@@ -32,9 +33,10 @@ export class Colony implements IColony {
 
     private _creepSpawner: CreepSpawner;
     private _resourcePlanner: ResourcePlanner;
-    private _baseBuilder: BaseBuilder;
+    private _baseBuilder: IBaseBuilder;
+    private _colonyProgressor: IProgressor;
 
-    public constructor(private _roomName: string) {
+    public constructor(_roomName: string) {
         let firstRun = false;
         if (Memory.colonies[_roomName] === undefined) {
             Memory.colonies[_roomName] = {
@@ -61,6 +63,8 @@ export class Colony implements IColony {
 
         // Spawner should run last, otherwise spawn requests will be removed from the queue but the creep won't exist yet in the census.
         this._creepSpawner.run();
+
+        this._memory.state = this._colonyProgressor.nextColonyState;
     }
 
     private intializeColony(): void {
@@ -85,11 +89,12 @@ export class Colony implements IColony {
     }
 
     private createInstances(): void {
-        const spawnQueue = new SpawnQueue(this._memory.spawnQueue);
-        const bodyBuilder = new CreepBuilder();
-        this._creepSpawner = new CreepSpawner(this._mainRoom, spawnQueue, bodyBuilder);
-        this._resourcePlanner = new ResourcePlanner(this, spawnQueue, this._memory.resourcePlanner);
-        this._baseBuilder = new HatchlingBuilder(this);
+        const factory = new ColonyFactory(this, this._memory);
+
+        this._creepSpawner = factory.creepSpawner;
+        this._resourcePlanner = factory.resourcePlanner;
+        this._baseBuilder = factory.baseBuilder;
+        this._colonyProgressor = factory.colonyProgressor;
     }
 
     public get name(): string {
@@ -106,5 +111,9 @@ export class Colony implements IColony {
 
     public get mainRoom(): Room {
         return this._mainRoom;
+    }
+
+    public get state(): ColonyState {
+        return this._memory.state;
     }
 }
